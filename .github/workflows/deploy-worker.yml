@@ -18,7 +18,7 @@ permissions:
 #   secrets   CLOUDFLARE_API_TOKEN (Workers Scripts: Edit), CLOUDFLARE_ACCOUNT_ID
 #             PP_GITHUB_CLIENT_SECRET (optional until the GitHub App exists)
 #             PP_SESSION_KEY (optional; a fresh one is generated per deploy if unset)
-#   variables PP_GITHUB_CLIENT_ID (optional until the GitHub App exists)
+#   variables PP_GITHUB_CLIENT_ID (optional until the GitHub App exists; a secret works too)
 #             PP_ALLOWED_ORIGINS (default: https://*.<CF_PAGES_PROJECT>.pages.dev)
 #             PP_ALLOWED_REPOS (default: this repository)
 
@@ -29,7 +29,7 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       WRANGLER_SEND_METRICS: 'false'
-      PP_GITHUB_CLIENT_ID: ${{ vars.PP_GITHUB_CLIENT_ID }}
+      PP_GITHUB_CLIENT_ID: ${{ vars.PP_GITHUB_CLIENT_ID || secrets.PP_GITHUB_CLIENT_ID }}
       PP_ALLOWED_ORIGINS: ${{ vars.PP_ALLOWED_ORIGINS || format('https://*.{0}.pages.dev', vars.CF_PAGES_PROJECT || 'preview-pins-demo') }}
       PP_ALLOWED_REPOS: ${{ vars.PP_ALLOWED_REPOS || github.repository }}
       PP_GITHUB_CLIENT_SECRET: ${{ secrets.PP_GITHUB_CLIENT_SECRET }}

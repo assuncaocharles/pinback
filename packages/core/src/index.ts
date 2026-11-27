@@ -55,3 +55,12 @@ export {
   type SealedSignIn,
   type Viewer,
 } from './rpc.js';
+export {
+  chooseReviewTarget,
+  commentableLines,
+  parseSource,
+  type PrFile,
+  type ReviewTarget,
+  type SourceLocation,
+} from './diff.js';
+export type { ReviewThreadState } from './github.js';

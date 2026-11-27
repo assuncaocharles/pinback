@@ -31,6 +31,13 @@ export interface RawComment {
   htmlUrl: string;
   /** "issue" = plain PR conversation comment, "review" = comment on a diff line. */
   kind: 'issue' | 'review';
+  /** Review comments only: the comment this one replies to in a GitHub review thread. */
+  inReplyTo?: string;
+  /**
+   * Review thread roots only, when known (needs a token): GitHub's own
+   * "resolved" state, which wins over preview-pins state events (ADR 5).
+   */
+  threadResolved?: boolean;
 }
 
 export interface Backend {

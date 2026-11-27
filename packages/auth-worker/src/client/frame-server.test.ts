@@ -180,3 +180,133 @@ describe('FrameServer state events', () => {
     expect(bad.msg).toMatchObject({ ok: false, error: { code: 'invalid' } });
   });
 });
+
+describe('FrameServer source-line comments (M4)', () => {
+  const SHA40 = 'a'.repeat(40);
+  const fullCtx = { ...ctx, commitSha: SHA40 };
+  const patch = '@@ -1,3 +1,4 @@\n <main>\n+  <h1>Title</h1>\n   <p>x</p>\n </main>';
+  const files = [{ filename: 'src/App.tsx', status: 'modified', patch }];
+  const sourced = (source: string): PinMetadata => ({ ...meta, anchor: { ...meta.anchor, source } });
+  const echo = (id: number, init: RequestInit, extra: object = {}) => {
+    const body = (JSON.parse(init.body as string) as { body: string }).body;
+    return new Response(JSON.stringify({ id, body, html_url: 'u', created_at: 'x', updated_at: 'x', user: null, ...extra }), { status: 201 });
+  };
+
+  function routes(handlers: Record<string, (init: RequestInit) => Response>) {
+    return (url: RequestInfo | URL, init?: RequestInit) => {
+      const u = String(url);
+      for (const [pattern, h] of Object.entries(handlers)) if (u.includes(pattern)) return Promise.resolve(h(init ?? {}));
+      return Promise.resolve(new Response('not mocked', { status: 500 }));
+    };
+  }
+
+  it('posts a review comment on the exact line when it is in the diff', async () => {
+    const { send, fetch } = setup({
+      signedIn: {},
+      fetch: routes({
+        '/pulls/3/files': () => new Response(JSON.stringify(files)),
+        '/pulls/3/comments': (init) => echo(10, init),
+      }),
+    });
+    await send('hello');
+    const created = result<{ kind: string; body: string }>(await send('createComment', { ctx: fullCtx, text: 'Title too big', meta: sourced('src/App.tsx:2:3') }));
+    expect(created.kind).toBe('review');
+    const post = fetch.mock.calls.find((c) => String(c[0]).endsWith('/pulls/3/comments'))!;
+    expect(JSON.parse(post[1]!.body as string)).toMatchObject({ commit_id: SHA40, path: 'src/App.tsx', line: 2, side: 'RIGHT' });
+    expect(created.body).not.toContain('element at');
+  });
+
+  it('uses the nearest hunk line and notes where the element really is', async () => {
+    const { send, fetch } = setup({
+      signedIn: {},
+      fetch: routes({
+        '/pulls/3/files': () => new Response(JSON.stringify(files)),
+        '/pulls/3/comments': (init) => echo(11, init),
+      }),
+    });
+    await send('hello');
+    const created = result<{ body: string }>(await send('createComment', { ctx: fullCtx, text: 'x', meta: sourced('src/App.tsx:9:1') }));
+    const post = fetch.mock.calls.find((c) => String(c[0]).endsWith('/pulls/3/comments'))!;
+    expect(JSON.parse(post[1]!.body as string)).toMatchObject({ line: 4 });
+    expect(created.body).toContain('element at `src/App.tsx:9`');
+  });
+
+  it('falls back to a plain PR comment when the file is not in the diff', async () => {
+    const { send, fetch } = setup({
+      signedIn: {},
+      fetch: routes({
+        '/pulls/3/files': () => new Response(JSON.stringify(files)),
+        '/issues/3/comments': (init) => echo(12, init),
+      }),
+    });
+    await send('hello');
+    const created = result<{ kind: string }>(await send('createComment', { ctx: fullCtx, text: 'x', meta: sourced('src/Other.tsx:1:1') }));
+    expect(created.kind).toBe('issue');
+    expect(fetch.mock.calls.some((c) => String(c[0]).endsWith('/pulls/3/comments'))).toBe(false);
+  });
+
+  it('falls back to a plain PR comment when GitHub rejects the review comment', async () => {
+    const { send } = setup({
+      signedIn: {},
+      fetch: routes({
+        '/pulls/3/files': () => new Response(JSON.stringify(files)),
+        '/pulls/3/comments': () => new Response('{"message":"line must be part of the diff"}', { status: 422 }),
+        '/issues/3/comments': (init) => echo(13, init),
+      }),
+    });
+    await send('hello');
+    const created = result<{ kind: string }>(await send('createComment', { ctx: fullCtx, text: 'x', meta: sourced('src/App.tsx:2:3') }));
+    expect(created.kind).toBe('issue');
+  });
+
+  it('never tries a review comment without the full commit SHA', async () => {
+    const { send, fetch } = setup({ signedIn: {}, fetch: routes({ '/issues/3/comments': (init) => echo(14, init) }) });
+    await send('hello');
+    await send('createComment', { ctx, text: 'x', meta: sourced('src/App.tsx:2:3') });
+    expect(fetch.mock.calls.some((c) => String(c[0]).includes('/pulls/'))).toBe(false);
+  });
+
+  it('replies inside review threads and mirrors resolve onto GitHub', async () => {
+    const graphql: string[] = [];
+    const { send, fetch } = setup({
+      signedIn: {},
+      fetch: routes({
+        '/pulls/3/comments/10/replies': (init) => echo(15, init, { in_reply_to_id: 10 }),
+        '/graphql': (init) => {
+          const { query } = JSON.parse(init.body as string) as { query: string };
+          graphql.push(query);
+          return new Response(
+            JSON.stringify(
+              query.startsWith('query')
+                ? { data: { repository: { pullRequest: { reviewThreads: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [{ id: 'T1', isResolved: false, comments: { nodes: [{ databaseId: 10 }] } }] } } } } }
+                : { data: { resolveReviewThread: { thread: { id: 'T1' } } } },
+            ),
+          );
+        },
+      }),
+    });
+    await send('hello');
+    const reply = result<{ kind: string; inReplyTo: string }>(
+      await send('createComment', { ctx, text: '', meta: { ...meta, parent: 10, state: 'resolved' }, parentKind: 'review' }),
+    );
+    expect(reply).toMatchObject({ kind: 'review', inReplyTo: '10' });
+    expect(fetch.mock.calls.some((c) => String(c[0]).includes('/issues/'))).toBe(false);
+    expect(graphql.some((q) => q.includes('resolveReviewThread'))).toBe(true);
+  });
+
+  it("adds GitHub's resolved state to review comments when signed in", async () => {
+    const reviewComment = { id: 10, body: 'b', body_html: '', html_url: 'u', created_at: 'x', updated_at: 'x', user: null };
+    const { send } = setup({
+      signedIn: {},
+      fetch: routes({
+        '/issues/3/comments': () => new Response('[]'),
+        '/pulls/3/comments': () => new Response(JSON.stringify([reviewComment])),
+        '/graphql': () =>
+          new Response(JSON.stringify({ data: { repository: { pullRequest: { reviewThreads: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [{ id: 'T1', isResolved: true, comments: { nodes: [{ databaseId: 10 }] } }] } } } } })),
+      }),
+    });
+    await send('hello');
+    const list = result<{ id: string; threadResolved?: boolean }[]>(await send('listComments', { ctx }));
+    expect(list).toEqual([expect.objectContaining({ id: '10', threadResolved: true })]);
+  });
+});

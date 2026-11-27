@@ -1,0 +1,36 @@
+{
+  "name": "@preview-pins/widget",
+  "version": "0.0.0",
+  "description": "Drop-in comment widget for preview deployments. One script tag.",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./preview-pins.js": "./dist/preview-pins.js"
+  },
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "types": "./dist/types/index.d.ts",
+        "default": "./dist/preview-pins.mjs"
+      },
+      "./preview-pins.js": "./dist/preview-pins.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "vite build && tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@preview-pins/core": "workspace:*"
+  },
+  "devDependencies": {
+    "vite": "^8.4.0"
+  }
+}

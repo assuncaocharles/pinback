@@ -1,0 +1,11 @@
+name = "preview-pins-auth"
+main = "src/index.ts"
+compatibility_date = "2026-11-01"
+
+[vars]
+# Comma-separated list of origins allowed to embed the auth iframe and call
+# the worker. Exact origins, or a single leading wildcard label such as
+# https://*.pages.dev. Override per environment in the dashboard.
+ALLOWED_ORIGINS = "http://localhost:5173,http://localhost:4173"
+
+# Secrets (set with `wrangler secret put`): GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET

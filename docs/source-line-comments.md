@@ -1,3 +1,7 @@
+---
+description: "Turn pins on components the PR changes into review comments on the exact file and line, with the Vite source plugin."
+---
+
 # Source-line comments
 
 When a pinned element came from a component that the PR changes, the pin is

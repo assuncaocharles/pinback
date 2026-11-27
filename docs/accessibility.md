@@ -1,3 +1,7 @@
+---
+description: "How the pinback widget supports keyboard and screen-reader users, and how axe runs in CI."
+---
+
 # Accessibility
 
 The widget aims for WCAG 2.2 AA. This page covers what's checked

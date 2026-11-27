@@ -1,3 +1,7 @@
+---
+description: "How pinback versions and publishes its npm packages with Changesets, staged publishing and trusted publishing."
+---
+
 # Releasing
 
 Packages are versioned with [Changesets](https://github.com/changesets/changesets)

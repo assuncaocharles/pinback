@@ -3,7 +3,7 @@
 When a pinned element came from a component that the PR changes, the pin is
 posted as a **review comment on that file and line**, next to the code, not
 in the PR conversation. This needs the source plugin
-(`@preview-pins/source-plugin`) in your preview builds. Without it, every pin
+(`@assuncaocharles/pinback-source-plugin`) in your preview builds. Without it, every pin
 is a plain PR comment.
 
 ## How the line is found
@@ -37,7 +37,7 @@ from, on the `RIGHT` side.
   (`POST /pulls/{n}/comments/{id}/replies`), so they stay in the thread on
   GitHub. Replies typed in GitHub's own review UI show up in the widget too.
 - **Resolved state:** when signed in, the widget reads GitHub's review-thread
-  `isResolved` (GraphQL), which wins over preview-pins state events. Resolving
+  `isResolved` (GraphQL), which wins over pinback state events. Resolving
   or reopening from the widget posts a state event **and** resolves or
   unresolves the GitHub thread, so both sides agree. Anonymous readers rely on
   the state events (ADR 5).
@@ -49,10 +49,10 @@ from, on the `RIGHT` side.
 
 ```ts
 // vite.config.ts
-import { previewPinsSource } from '@preview-pins/source-plugin';
+import { pinbackSource } from '@assuncaocharles/pinback-source-plugin';
 
 export default defineConfig({
-  plugins: [previewPinsSource(), react()],
+  plugins: [pinbackSource(), react()],
 });
 ```
 

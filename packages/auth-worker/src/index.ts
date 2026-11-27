@@ -116,7 +116,7 @@ function frame(env: Env, url: URL): Response {
     "form-action 'none'",
   ].join('; ');
   return new Response(
-    page({ title: 'preview-pins auth', body: '<p>preview-pins auth frame.</p>', data: config, script: `${url.origin}/frame.js`, style: false }),
+    page({ title: 'pinback auth', body: '<p>pinback auth frame.</p>', data: config, script: `${url.origin}/frame.js`, style: false }),
     { headers: { ...SECURITY_HEADERS, 'Content-Type': 'text/html; charset=utf-8', 'Content-Security-Policy': csp } },
   );
 }

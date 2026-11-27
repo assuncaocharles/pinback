@@ -4,19 +4,19 @@ Every pin is an ordinary GitHub PR comment. The comment has three parts:
 
 1. **The reviewer's text** (markdown), exactly as typed.
 2. **A footer** that reads well on GitHub, e.g.
-   `<sub>📌 Pinned on [/checkout](…) at abc1234 · preview-pins</sub>`.
+   `<sub>📌 Pinned on [/checkout](…) at abc1234 · pinback</sub>`.
    This is cosmetic only. The widget hides it and never parses it.
 3. **A hidden metadata block**, an HTML comment that GitHub keeps in the raw
    body but doesn't render:
 
 ```
-<!-- preview-pins:v1 {"anchor":{…},"viewport":{"w":1440,"h":900},"url":"/checkout","sha":"abc1234","parent":null} -->
+<!-- pinback:v1 {"anchor":{…},"viewport":{"w":1440,"h":900},"url":"/checkout","sha":"abc1234","parent":null} -->
 ```
 
 ## Syntax
 
 ```
-<!-- preview-pins:v<VERSION> <JSON> -->
+<!-- pinback:v<VERSION> <JSON> -->
 ```
 
 - One space after `<!--`, after the version and before `-->`.
@@ -29,8 +29,8 @@ Every pin is an ordinary GitHub PR comment. The comment has three parts:
 - If a body contains several blocks (for example, a reply that quotes another
   pin), readers use the **last** one. Writers append the block at the end of
   the body.
-- Other `<!-- preview-pins:… -->` markers that don't match
-  `preview-pins:v<digits> `, such as `preview-pins:deploy`, aren't metadata
+- Other `<!-- pinback:… -->` markers that don't match
+  `pinback:v<digits> `, such as `pinback:deploy`, aren't metadata
   and are ignored.
 
 ## Fields
@@ -82,7 +82,7 @@ rather than misplace them.
 ```markdown
 The CTA blends into the card in dark mode. Can we bump contrast?
 
-<sub>📌 Pinned on [`/checkout`](https://pr-12.example.pages.dev/checkout) at abc1234 · preview-pins</sub>
+<sub>📌 Pinned on [`/checkout`](https://pr-12.example.pages.dev/checkout) at abc1234 · pinback</sub>
 
-<!-- preview-pins:v1 {"anchor":{"testId":"checkout-button","cssPath":"#root > main > section > button","textQuote":{"exact":"Place order","prefix":"Total $62","suffix":""},"rect":{"x":0.85,"y":0.3}},"viewport":{"w":1440,"h":900},"url":"/checkout","sha":"abc1234","parent":null} -->
+<!-- pinback:v1 {"anchor":{"testId":"checkout-button","cssPath":"#root > main > section > button","textQuote":{"exact":"Place order","prefix":"Total $62","suffix":""},"rect":{"x":0.85,"y":0.3}},"viewport":{"w":1440,"h":900},"url":"/checkout","sha":"abc1234","parent":null} -->
 ```

@@ -1,25 +1,46 @@
 {
-  "name": "@preview-pins/widget",
+  "name": "@assuncaocharles/pinback",
   "version": "0.0.0",
-  "description": "Drop-in comment widget for preview deployments. One script tag.",
+  "description": "Pin review comments to any element on a preview deployment. Comments land on the GitHub PR. One script tag.",
+  "keywords": [
+    "github",
+    "pull-request",
+    "code-review",
+    "preview",
+    "deploy-preview",
+    "comments",
+    "web-component",
+    "feedback"
+  ],
+  "homepage": "https://assuncaocharles.github.io/pinback/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/assuncaocharles/pinback.git",
+    "directory": "packages/widget"
+  },
+  "bugs": {
+    "url": "https://github.com/assuncaocharles/pinback/issues"
+  },
   "license": "MIT",
   "type": "module",
+  "unpkg": "dist/pinback.js",
+  "jsdelivr": "dist/pinback.js",
   "exports": {
     ".": {
       "types": "./src/index.ts",
       "default": "./src/index.ts"
     },
-    "./preview-pins.js": "./dist/preview-pins.js",
-    "./preview-pins-capture.mjs": "./dist/preview-pins-capture.mjs"
+    "./pinback.js": "./dist/pinback.js",
+    "./pinback-capture.mjs": "./dist/pinback-capture.mjs"
   },
   "publishConfig": {
     "exports": {
       ".": {
         "types": "./dist/types/index.d.ts",
-        "default": "./dist/preview-pins.mjs"
+        "default": "./dist/pinback.mjs"
       },
-      "./preview-pins.js": "./dist/preview-pins.js",
-      "./preview-pins-capture.mjs": "./dist/preview-pins-capture.mjs"
+      "./pinback.js": "./dist/pinback.js",
+      "./pinback-capture.mjs": "./dist/pinback-capture.mjs"
     }
   },
   "files": [
@@ -30,10 +51,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@preview-pins/core": "workspace:*",
-    "modern-screenshot": "4.7.0"
+    "@assuncaocharles/pinback-core": "workspace:*"
   },
   "devDependencies": {
-    "vite": "^8.4.0"
+    "vite": "^8.4.0",
+    "modern-screenshot": "4.7.0"
   }
 }

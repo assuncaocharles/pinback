@@ -17,7 +17,7 @@ from GitHub Actions. This gives a stable URL per PR
 - The auth worker already uses Cloudflare, so there is one account and one
   CLI to manage.
 - The deploy is driven from Actions instead of Cloudflare's Git integration,
-  so we control the build env vars that produce the `preview-pins` meta tag.
+  so we control the build env vars that produce the `pinback` meta tag.
 - GitHub Pages was rejected because it has no native per-PR previews.
 
 ## Consequences

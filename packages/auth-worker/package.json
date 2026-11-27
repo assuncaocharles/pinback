@@ -1,5 +1,5 @@
 {
-  "name": "@preview-pins/auth-worker",
+  "name": "@assuncaocharles/pinback-auth-worker",
   "version": "0.0.0",
   "description": "Stateless Cloudflare Worker: GitHub App OAuth code exchange and the auth iframe.",
   "license": "MIT",
@@ -17,6 +17,6 @@
     "wrangler": "^4.168.0"
   },
   "dependencies": {
-    "@preview-pins/core": "workspace:*"
+    "@assuncaocharles/pinback-core": "workspace:*"
   }
 }

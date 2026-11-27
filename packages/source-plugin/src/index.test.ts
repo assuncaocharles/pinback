@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { findRepoRoot, previewPinsSource, transformSource } from './index.js';
+import { findRepoRoot, pinbackSource, transformSource } from './index.js';
 
 const ROOT = '/repo';
 const tsx = `import { Card } from './Card';
@@ -72,14 +72,14 @@ describe('findRepoRoot', () => {
   });
 });
 
-describe('previewPinsSource', () => {
+describe('pinbackSource', () => {
   it('is disabled unless opted in', () => {
-    const plugin = previewPinsSource({ enabled: false });
+    const plugin = pinbackSource({ enabled: false });
     expect(typeof plugin.apply === 'function' && plugin.apply({}, { command: 'build', mode: 'production' })).toBe(false);
   });
 
   it('can be enabled explicitly', () => {
-    const plugin = previewPinsSource({ enabled: true });
+    const plugin = pinbackSource({ enabled: true });
     expect(typeof plugin.apply === 'function' && plugin.apply({}, { command: 'build', mode: 'production' })).toBe(true);
   });
 });

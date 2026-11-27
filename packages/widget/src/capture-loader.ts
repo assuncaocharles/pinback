@@ -15,10 +15,10 @@ export function setCaptureLoader(loader: (() => Promise<CaptureModule>) | null):
   override = loader;
 }
 
-/** Loads preview-pins-capture.mjs on first use (ADR 11). */
+/** Loads pinback-capture.mjs on first use (ADR 11). */
 export function loadCapture(explicitUrl?: string): Promise<CaptureModule> {
   if (override) return override();
-  const url = explicitUrl ?? (assetBase ? new URL('preview-pins-capture.mjs', assetBase).href : null);
+  const url = explicitUrl ?? (assetBase ? new URL('pinback-capture.mjs', assetBase).href : null);
   if (!url) return Promise.reject(new Error('Screenshot module location unknown; set config.captureUrl'));
   return import(/* @vite-ignore */ url) as Promise<CaptureModule>;
 }

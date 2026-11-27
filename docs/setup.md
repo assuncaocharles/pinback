@@ -8,8 +8,8 @@ Add one script tag and one meta tag to the HTML your previews serve. Build
 the meta tag from CI variables:
 
 ```html
-<meta name="preview-pins" content="owner=ORG;repo=REPO;pr=123;sha=FULL_COMMIT_SHA;auth=https://preview-pins-auth.YOU.workers.dev">
-<script src="https://unpkg.com/@preview-pins/widget/dist/preview-pins.js" defer></script>
+<meta name="pinback" content="owner=ORG;repo=REPO;pr=123;sha=FULL_COMMIT_SHA;auth=https://preview-pins-auth.YOU.workers.dev">
+<script src="https://unpkg.com/@assuncaocharles/pinback/dist/pinback.js" defer></script>
 ```
 
 - `pr` and `sha` come from the pull request (in GitHub Actions:
@@ -22,7 +22,7 @@ the meta tag from CI variables:
 Only add the tags in preview builds. The widget does nothing useful in
 production.
 
-**Optional, recommended:** add `@preview-pins/source-plugin` to your Vite
+**Optional, recommended:** add `@assuncaocharles/pinback-source-plugin` to your Vite
 config and build previews with `PREVIEW_PINS=1`. Pins on components the PR
 changes then land as review comments on the right file and line. See
 [source-line-comments.md](source-line-comments.md).
@@ -112,7 +112,7 @@ your R2 bucket and embedded in the comment. Read
 [ADR 11](adr/0011-screenshots.md) first: images are public by URL, so think
 twice for private repos.
 
-1. Cloudflare → **R2** → create a bucket, e.g. `preview-pins-screenshots`.
+1. Cloudflare → **R2** → create a bucket, e.g. `pinback-screenshots`.
    R2 needs a payment method on the account, even on the free tier.
    Optionally add a lifecycle rule that deletes objects after 90 days.
 2. Add **Workers R2 Storage: Edit** to the Cloudflare API token.
@@ -121,7 +121,7 @@ twice for private repos.
    `[[r2_buckets]]` block in `packages/auth-worker/wrangler.toml`.
 
 The **Attach screenshot** checkbox then appears in the composer. Serve
-`preview-pins-capture.mjs` next to `preview-pins.js` (unpkg/jsdelivr do this
+`pinback-capture.mjs` next to `pinback.js` (unpkg/jsdelivr do this
 automatically), or set `config.captureUrl`.
 
 ### Preview cleanup

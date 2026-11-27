@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { CONTEXT_QUERY, mockGitHub, pinComment } from './fixtures.js';
 
-const widget = 'preview-pins';
+const widget = 'pinback-widget';
 
 test.describe('read-only pins (M1)', () => {
   test('renders a pin on the anchored element', async ({ page }) => {
@@ -49,7 +49,7 @@ test.describe('read-only pins (M1)', () => {
     const dialog = page.locator(widget).getByRole('dialog', { name: 'Comment 1' });
     await expect(dialog).toBeVisible();
     await expect(dialog).toContainText('Root comment');
-    await expect(dialog).not.toContainText('preview-pins'); // footer stripped
+    await expect(dialog).not.toContainText('pinback-widget'); // footer stripped
     await page.keyboard.press('Escape');
     await expect(dialog).toBeHidden();
     await expect(pin).toBeFocused();

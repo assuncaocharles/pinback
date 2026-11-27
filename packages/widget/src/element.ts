@@ -14,7 +14,7 @@ import {
   type Thread,
   type ThreadState,
   type Viewer,
-} from '@preview-pins/core';
+} from '@assuncaocharles/pinback-core';
 import { h } from './dom.js';
 import { loadCapture } from './capture-loader.js';
 import { FrameBackend, FrameError, createAuthFrame, type AuthFrame } from './frame-client.js';
@@ -25,9 +25,9 @@ import { Picker, describeTarget } from './picker.js';
 import { styles } from './styles.js';
 import { ThreadDialog } from './thread-dialog.js';
 
-export const TAG_NAME = 'preview-pins';
+export const TAG_NAME = 'pinback-widget';
 
-export interface PreviewPinsConfig {
+export interface PinbackConfig {
   owner?: string;
   repo?: string;
   prNumber?: number;
@@ -38,7 +38,7 @@ export interface PreviewPinsConfig {
   authOrigin?: string;
   /** How often to re-check for new comments while the tab is visible. Default 60 s. */
   pollIntervalMs?: number;
-  /** URL of preview-pins-capture.mjs. Defaults to next to the widget script. */
+  /** URL of pinback-capture.mjs. Defaults to next to the widget script. */
   captureUrl?: string;
 }
 
@@ -52,12 +52,12 @@ const AUTH_HASH = '#pp_auth=';
 const POPUP_NAME = 'pp-auth';
 
 /**
- * `<preview-pins>`: the widget root.
+ * `<pinback-widget>`: the widget root.
  * M1: read pins and threads. M2: sign in through the auth frame, create
  * pins, reply, resolve/reopen. The token never enters this page (ADR 7).
  */
-export class PreviewPinsElement extends HTMLElement {
-  #config: PreviewPinsConfig = {};
+export class PinbackElement extends HTMLElement {
+  #config: PinbackConfig = {};
   #anonBackend: Backend | null = null;
   #backendOverride: Backend | null = null;
   #frame: AuthFrame | null = null;
@@ -153,11 +153,11 @@ export class PreviewPinsElement extends HTMLElement {
 
   // ---- public API --------------------------------------------------------
 
-  get config(): PreviewPinsConfig {
+  get config(): PinbackConfig {
     return this.#config;
   }
 
-  set config(value: PreviewPinsConfig) {
+  set config(value: PinbackConfig) {
     this.#config = { ...value };
     this.#anonBackend = null;
     if (this.isConnected) this.#start();

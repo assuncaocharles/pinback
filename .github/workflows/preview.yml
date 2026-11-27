@@ -2,7 +2,7 @@ name: Preview deploy
 
 # Builds examples/react-vite for each PR and deploys it to Cloudflare Pages
 # as a branch preview (https://pr-<n>.<project>.pages.dev). The PR context is
-# baked into a <meta name="preview-pins"> tag from the env vars below.
+# baked into a <meta name="pinback"> tag from the env vars below.
 #
 # Required repository secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID.
 # Optional repository variable: CF_PAGES_PROJECT (default preview-pins-demo).
@@ -66,7 +66,7 @@ jobs:
           PREVIEW_URL: ${{ steps.deploy.outputs.url }}
         with:
           script: |
-            const marker = '<!-- preview-pins:deploy -->';
+            const marker = '<!-- pinback:deploy -->';
             const body = `${marker}\nPreview: ${process.env.PREVIEW_URL}\n\nBuilt from ${context.payload.pull_request.head.sha.slice(0, 7)}.`;
             const { owner, repo } = context.repo;
             const issue_number = context.issue.number;

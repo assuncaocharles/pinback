@@ -1,4 +1,4 @@
-import type { Viewer } from '@preview-pins/core';
+import type { Viewer } from '@assuncaocharles/pinback-core';
 import { h } from './dom.js';
 import { sanitize } from './sanitize.js';
 

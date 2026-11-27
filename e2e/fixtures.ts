@@ -12,7 +12,7 @@ export function pinComment(text: string, meta: Partial<PinMetadata>, login = 'al
   return {
     id,
     body: formatCommentBody({ text, meta: full }),
-    body_html: `<p>${text}</p><p><sub>📌 Pinned on <code>${full.url}</code> at abc1234 · preview-pins</sub></p>`,
+    body_html: `<p>${text}</p><p><sub>📌 Pinned on <code>${full.url}</code> at abc1234 · pinback</sub></p>`,
     html_url: `https://github.com/acme/web/pull/12#issuecomment-${id}`,
     created_at: new Date(Date.UTC(2026, 10, 1, 12, 0, id % 60)).toISOString(),
     updated_at: new Date(Date.UTC(2026, 10, 1, 12, 0, id % 60)).toISOString(),

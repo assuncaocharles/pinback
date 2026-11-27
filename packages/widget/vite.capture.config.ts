@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite';
 
-/** Builds the lazy capture module next to the widget: dist/preview-pins-capture.mjs. */
+/** Builds the lazy capture module next to the widget: dist/pinback-capture.mjs. */
 export default defineConfig({
   build: {
     target: 'es2022',
@@ -10,7 +10,7 @@ export default defineConfig({
     lib: {
       entry: 'src/capture/index.ts',
       formats: ['es'],
-      fileName: () => 'preview-pins-capture.mjs',
+      fileName: () => 'pinback-capture.mjs',
     },
   },
 });

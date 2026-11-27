@@ -19,7 +19,7 @@ import {
   type RpcRequest,
   type RpcResponse,
   type Viewer,
-} from '@preview-pins/core';
+} from '@assuncaocharles/pinback-core';
 import { randomToken, sha256b64url } from '../crypto.js';
 import type { FrameConfig, TokenSet } from '../types.js';
 import { parseAllowlist } from '../origins.js';
@@ -173,7 +173,7 @@ export class FrameServer {
   /**
    * Comments plus, when signed in, GitHub's resolved state for review threads
    * (ADR 5). The GraphQL lookup is best-effort: on failure the widget falls
-   * back to preview-pins state events.
+   * back to pinback state events.
    */
   async #listComments(ctx: PRContext): Promise<RawComment[]> {
     const comments = await this.#github.listComments(ctx);
@@ -259,7 +259,7 @@ export class FrameServer {
     return { url };
   }
 
-  /** Mirrors a preview-pins resolve/reopen onto GitHub's review thread. Best-effort. */
+  /** Mirrors a pinback resolve/reopen onto GitHub's review thread. Best-effort. */
   async #syncReviewThread(ctx: PRContext, rootId: string, resolved: boolean): Promise<void> {
     try {
       const thread = (await this.#github.reviewThreadStates(ctx)).get(rootId);

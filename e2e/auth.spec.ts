@@ -3,7 +3,7 @@ import { CONTEXT_QUERY, CORS, blockUnmockedGitHub, mockGitHub, pinComment } from
 
 const TOKEN = 'ghu_E2E_SECRET_TOKEN_do_not_leak';
 const AUTH = 'http://localhost:8787';
-const widget = 'preview-pins';
+const widget = 'pinback-widget';
 
 /** Records every message the host window receives, so we can prove none carries the token. */
 async function recordHostMessages(page: Page) {
@@ -96,11 +96,11 @@ test.describe('auth and writing (M2)', () => {
     expect(created).toHaveLength(1);
     expect(created[0]!.auth).toBe(`Bearer ${TOKEN}`);
     expect(created[0]!.frameUrl).toBe(`${AUTH}/frame`);
-    expect(created[0]!.body).toContain('<!-- preview-pins:v1 ');
+    expect(created[0]!.body).toContain('<!-- pinback:v1 ');
 
     // Nothing the host page can read contains the token.
     const leaks = await page.evaluate((token) => {
-      const host = document.querySelector('preview-pins');
+      const host = document.querySelector('pinback-widget');
       const haystacks: Record<string, string> = {
         localStorage: JSON.stringify(Object.entries(localStorage)),
         sessionStorage: JSON.stringify(Object.entries(sessionStorage)),
@@ -116,7 +116,7 @@ test.describe('auth and writing (M2)', () => {
 
     // The host page can't reach into the frame's storage...
     const frameAccess = await page.evaluate(() => {
-      const iframe = document.querySelector('preview-pins')!.shadowRoot!.querySelector('iframe')!;
+      const iframe = document.querySelector('pinback-widget')!.shadowRoot!.querySelector('iframe')!;
       try {
         return String(iframe.contentWindow!.localStorage.length);
       } catch (e) {
@@ -216,7 +216,7 @@ test.describe('auth and writing (M2)', () => {
 
     await signIn(page);
     await page.keyboard.press('Escape');
-    const w = page.locator('preview-pins');
+    const w = page.locator('pinback-widget');
     await w.getByRole('button', { name: 'Comment', exact: true }).click();
     await page.getByTestId('checkout-button').click();
     await w.getByRole('dialog', { name: 'New comment' }).getByRole('textbox', { name: 'Comment' }).fill('On the line');
@@ -244,7 +244,7 @@ test.describe('auth and writing (M2)', () => {
     await page.goto(`/${CONTEXT_QUERY}`);
     await signIn(page);
     await page.keyboard.press('Escape');
-    const w = page.locator('preview-pins');
+    const w = page.locator('pinback-widget');
     await w.getByRole('button', { name: 'Comment', exact: true }).click();
     await page.getByTestId('cart-total').click();
     const dialog = w.getByRole('dialog', { name: 'New comment' });

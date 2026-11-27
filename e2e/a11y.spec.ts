@@ -4,14 +4,14 @@ import { CONTEXT_QUERY, CORS, blockUnmockedGitHub, mockGitHub, pinComment } from
 
 /**
  * Definition of done: axe reports zero violations for the widget UI.
- * Every scan is scoped to <preview-pins> (axe pierces its shadow root), so the
+ * Every scan is scoped to <pinback-widget> (axe pierces its shadow root), so the
  * demo page's own markup doesn't count for or against us.
  */
 
 const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'];
 
 async function audit(page: Page, label: string) {
-  const results = await new AxeBuilder({ page }).include('preview-pins').withTags(TAGS).analyze();
+  const results = await new AxeBuilder({ page }).include('pinback-widget').withTags(TAGS).analyze();
   const summary = results.violations.map(
     (v) => `${v.id} (${v.impact ?? 'n/a'}): ${v.help}\n${v.nodes.map((n) => `    ${n.target.join(' ')} :: ${n.failureSummary ?? ''}`).join('\n')}`,
   );
@@ -41,7 +41,7 @@ for (const scheme of ['light', 'dark'] as const) {
       const done = all[5]!;
       await mockGitHub(page, [...all, pinComment('', { parent: done.id, state: 'resolved' }, 'octocat')]);
       await page.goto(`/${CONTEXT_QUERY}`);
-      const w = page.locator('preview-pins');
+      const w = page.locator('pinback-widget');
       await expect(w.locator('.pin').first()).toBeVisible();
       await audit(page, 'toolbar and pins');
 
@@ -68,7 +68,7 @@ for (const scheme of ['light', 'dark'] as const) {
       );
       await mockGitHub(page, threads().slice(0, 2));
       await page.goto(`/${CONTEXT_QUERY}`);
-      const w = page.locator('preview-pins');
+      const w = page.locator('pinback-widget');
 
       await w.getByRole('button', { name: /^Comments \d/ }).click();
       const [popup] = await Promise.all([page.waitForEvent('popup'), w.getByRole('button', { name: 'Sign in with GitHub' }).click()]);

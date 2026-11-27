@@ -52,6 +52,9 @@ jobs:
             echo "::warning::Cloudflare secrets not set; skipping preview deploy."
             exit 0
           fi
+          # Create the Pages project on first run. Fails harmlessly if it already exists;
+          # a real auth problem still surfaces in the deploy command below.
+          pnpm exec wrangler pages project create "$CF_PAGES_PROJECT" --production-branch main || true
           pnpm run deploy:preview --branch "pr-${{ github.event.pull_request.number }}" --commit-hash "${{ github.event.pull_request.head.sha }}"
           echo "url=https://pr-${{ github.event.pull_request.number }}.${CF_PAGES_PROJECT}.pages.dev" >> "$GITHUB_OUTPUT"
       - name: Comment preview URL

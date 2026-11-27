@@ -15,6 +15,8 @@ const require = createRequire(import.meta.url);
  */
 function previewPinsDemo(): Plugin {
   const widgetPath = require.resolve('@preview-pins/widget/preview-pins.js');
+  // Lazy screenshot module (ADR 11): served next to the widget script.
+  const capturePath = require.resolve('@preview-pins/widget/preview-pins-capture.mjs');
   const [owner, repo] = (process.env.GITHUB_REPOSITORY ?? '').split('/');
   const pr = process.env.PREVIEW_PINS_PR;
   const sha = process.env.PREVIEW_PINS_SHA;
@@ -36,9 +38,14 @@ function previewPinsDemo(): Plugin {
         res.setHeader('Content-Type', 'text/javascript');
         res.end(readFileSync(widgetPath));
       });
+      server.middlewares.use('/preview-pins-capture.mjs', (_req, res) => {
+        res.setHeader('Content-Type', 'text/javascript');
+        res.end(readFileSync(capturePath));
+      });
     },
     generateBundle() {
       this.emitFile({ type: 'asset', fileName: 'preview-pins.js', source: readFileSync(widgetPath) });
+      this.emitFile({ type: 'asset', fileName: 'preview-pins-capture.mjs', source: readFileSync(capturePath) });
     },
     transformIndexHtml() {
       return [

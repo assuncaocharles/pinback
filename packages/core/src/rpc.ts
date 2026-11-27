@@ -24,12 +24,14 @@ export interface CreateCommentParams {
   previewUrl?: string;
   /** For replies and state events: where the thread's root lives, so replies stay in a review thread. */
   parentKind?: 'issue' | 'review';
+  /** A screenshot previously stored with uploadScreenshot (must be on the auth worker's origin). */
+  screenshotUrl?: string;
 }
 
 /** Method name -> [params, result]. */
 export interface RpcMethods {
   /** Handshake. Pins the parent origin in the frame. */
-  hello: [Record<string, never>, { viewer: Viewer | null; challenge: string }];
+  hello: [Record<string, never>, { viewer: Viewer | null; challenge: string; features: { screenshots: boolean } }];
   /** Exchange a sealed sign-in blob for tokens (stored in the frame only). */
   redeem: [{ blob: string }, { viewer: Viewer }];
   signOut: [Record<string, never>, null];
@@ -38,6 +40,8 @@ export interface RpcMethods {
   renderMarkdown: [{ ctx: PRContext; text: string }, string];
   /** Whether the viewer may resolve threads they didn't start (push access). */
   canMaintain: [{ ctx: PRContext }, boolean];
+  /** Stores a PNG/WebP/JPEG in the worker's R2 bucket (ADR 11). */
+  uploadScreenshot: [{ ctx: PRContext; data: ArrayBuffer; type: string }, { url: string }];
 }
 
 export type RpcMethod = keyof RpcMethods;
@@ -87,6 +91,7 @@ const METHODS: ReadonlySet<string> = new Set<RpcMethod>([
   'createComment',
   'renderMarkdown',
   'canMaintain',
+  'uploadScreenshot',
 ]);
 
 type Rec = Record<string, unknown>;

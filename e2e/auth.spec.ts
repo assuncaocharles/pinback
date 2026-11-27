@@ -226,4 +226,45 @@ test.describe('auth and writing (M2)', () => {
     expect(posts).toHaveLength(1);
     expect(posts[0]!.body).toMatchObject({ path, line, side: 'RIGHT', commit_id: 'abc1234def5678abc1234def5678abc1234def56' });
   });
+
+  test('attaches a real screenshot, stored by the worker and embedded in the comment (ADR 11)', async ({ page }) => {
+    await mockGitHub(page, []);
+    const uploads: { from: string; type: string | undefined }[] = [];
+    page.context().on('request', (r) => {
+      if (r.url().startsWith(`${AUTH}/screenshots`)) uploads.push({ from: r.frame().url(), type: r.headers()['content-type'] });
+    });
+    let body = '';
+    await page.context().route('https://api.github.com/repos/acme/web/issues/12/comments', async (route) => {
+      const req = route.request();
+      if (req.method() !== 'POST') return route.fallback();
+      body = (req.postDataJSON() as { body: string }).body;
+      await route.fulfill({ status: 201, headers: CORS, json: { ...pinComment('x', {}), id: 4343, body, body_html: '<p>With picture</p>', user: { login: 'octocat', avatar_url: '' } } });
+    });
+
+    await page.goto(`/${CONTEXT_QUERY}`);
+    await signIn(page);
+    await page.keyboard.press('Escape');
+    const w = page.locator('preview-pins');
+    await w.getByRole('button', { name: 'Comment', exact: true }).click();
+    await page.getByTestId('cart-total').click();
+    const dialog = w.getByRole('dialog', { name: 'New comment' });
+    await dialog.getByRole('textbox', { name: 'Comment' }).fill('With picture');
+    await dialog.getByRole('checkbox', { name: 'Attach screenshot' }).check();
+    await dialog.getByRole('button', { name: 'Comment', exact: true }).click();
+    await expect(dialog).toBeHidden({ timeout: 15_000 });
+
+    // Uploaded by the auth frame, not the host page.
+    expect(uploads).toHaveLength(1);
+    expect(uploads[0]!.from).toBe(`${AUTH}/frame`);
+    const m = /!\[Screenshot of the pinned element\]\((http:\/\/localhost:8787\/s\/acme\/web\/[A-Za-z0-9_-]{22}\.(?:webp|png))\)/.exec(body);
+    expect(m, body).not.toBeNull();
+
+    // The stored image is served, as an image, with a locked-down CSP.
+    const img = await page.request.get(m![1]!);
+    expect(img.status()).toBe(200);
+    expect(img.headers()['content-type']).toMatch(/^image\/(webp|png)$/);
+    expect(img.headers()['content-security-policy']).toContain('sandbox');
+    expect((await img.body()).length).toBeGreaterThan(1000);
+  });
 });
+

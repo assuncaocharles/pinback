@@ -28,6 +28,7 @@ const AUTH_KEY = 'pp:auth';
 const SECRET_KEY = 'pp:secret';
 const REFRESH_SKEW_MS = 60_000;
 const MAX_TEXT = 60_000;
+const MAX_SCREENSHOT = 2 * 1024 * 1024;
 
 interface StoredAuth {
   tokens: TokenSet;
@@ -115,7 +116,11 @@ export class FrameServer {
     const p = req.params as Record<string, unknown>;
     switch (req.method) {
       case 'hello':
-        return { viewer: this.#auth()?.viewer ?? null, challenge: await this.#challenge() };
+        return {
+          viewer: this.#auth()?.viewer ?? null,
+          challenge: await this.#challenge(),
+          features: { screenshots: this.#d.config.screenshots },
+        };
       case 'redeem':
         return this.#redeem(p);
       case 'signOut':
@@ -136,6 +141,9 @@ export class FrameServer {
       case 'canMaintain':
         this.#requireAuth();
         return this.#github.canMaintain(this.#ctx(p.ctx));
+      case 'uploadScreenshot':
+        this.#requireAuth();
+        return this.#uploadScreenshot(this.#ctx(p.ctx), p.data, p.type);
     }
   }
 
@@ -230,6 +238,27 @@ export class FrameServer {
     }
   }
 
+  /** Sends the image to the worker with the user's token; the worker checks repo access (ADR 11). */
+  async #uploadScreenshot(ctx: PRContext, data: unknown, type: unknown): Promise<{ url: string }> {
+    if (!this.#d.config.screenshots) throw new RpcError('invalid', 'Screenshots are not enabled on this auth worker');
+    if (!(data instanceof ArrayBuffer) || data.byteLength === 0 || data.byteLength > MAX_SCREENSHOT) {
+      throw new RpcError('invalid', 'Screenshot is empty or larger than 2 MB');
+    }
+    if (type !== 'image/png' && type !== 'image/webp' && type !== 'image/jpeg') throw new RpcError('invalid', 'Unsupported image type');
+    const token = await this.#token();
+    if (!token) throw new RpcError('unauthenticated', 'Sign in to continue');
+    const q = new URLSearchParams({ owner: ctx.owner, repo: ctx.repo });
+    const res = await this.#d.fetch(`${this.#d.workerOrigin}/screenshots?${q.toString()}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': type },
+      body: data,
+    });
+    if (res.status === 401) throw new RpcError('unauthenticated', 'Sign in to continue');
+    if (!res.ok) throw new RpcError(res.status === 403 ? 'forbidden' : 'http', `Screenshot upload failed (${res.status})`);
+    const { url } = (await res.json()) as { url: string };
+    return { url };
+  }
+
   /** Mirrors a preview-pins resolve/reopen onto GitHub's review thread. Best-effort. */
   async #syncReviewThread(ctx: PRContext, rootId: string, resolved: boolean): Promise<void> {
     try {
@@ -260,7 +289,16 @@ export class FrameServer {
         // ignore
       }
     }
-    return { text, meta, ...(previewUrl ? { previewUrl } : {}) };
+    // Only images this worker stored can be embedded.
+    let body = text;
+    if (typeof p.screenshotUrl === 'string') {
+      const prefix = `${this.#d.workerOrigin}/s/`;
+      if (!p.screenshotUrl.startsWith(prefix) || !/^[\w./-]+$/.test(p.screenshotUrl.slice(prefix.length))) {
+        throw new RpcError('invalid', 'Invalid screenshot URL');
+      }
+      body = `${text.trim()}\n\n![Screenshot of the pinned element](${p.screenshotUrl})`;
+    }
+    return { text: body, meta, ...(previewUrl ? { previewUrl } : {}) };
   }
 
   async #redeem(p: Record<string, unknown>): Promise<{ viewer: Viewer }> {

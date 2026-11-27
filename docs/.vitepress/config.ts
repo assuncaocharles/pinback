@@ -35,6 +35,7 @@ export default defineConfig({
           { text: 'Setup', link: '/setup' },
           { text: 'Source-line comments', link: '/source-line-comments' },
           { text: 'Accessibility', link: '/accessibility' },
+          { text: 'Releasing', link: '/releasing' },
         ],
       },
       { text: 'Reference', items: [{ text: 'Comment metadata format (v1)', link: '/metadata-format' }] },

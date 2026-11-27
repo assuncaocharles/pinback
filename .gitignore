@@ -9,3 +9,4 @@ playwright-report/
 .dev.vars
 docs/.vitepress/cache/
 docs/.vitepress/dist/
+packages/auth-worker/wrangler.ci.toml

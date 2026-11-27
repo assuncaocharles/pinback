@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { BackendError, type Backend, type RawComment } from '@preview-pins/core';
-import { rawPin } from '@preview-pins/core/testing';
-import { PreviewPinsElement, TAG_NAME } from './index.js';
+import { BackendError, type Backend, type RawComment } from '@assuncaocharles/pinback-core';
+import { rawPin } from '@assuncaocharles/pinback-core/testing';
+import { PinbackElement, TAG_NAME } from './index.js';
 
 const SHA = 'abc1234def5678abc1234def5678abc1234def56';
 const CTX = { owner: 'acme', repo: 'web', prNumber: 5, commitSha: SHA };
@@ -26,9 +26,9 @@ function fakeBackend(comments: RawComment[] | Error): Backend & { calls: number 
 
 const flush = () => new Promise((r) => setTimeout(r, 30));
 
-async function mount(comments: RawComment[] | Error = []): Promise<PreviewPinsElement> {
+async function mount(comments: RawComment[] | Error = []): Promise<PinbackElement> {
   const el = document.createElement(TAG_NAME);
-  if (!(el instanceof PreviewPinsElement)) throw new Error('element not upgraded');
+  if (!(el instanceof PinbackElement)) throw new Error('element not upgraded');
   el.backend = fakeBackend(comments);
   el.config = CTX;
   document.body.append(el);
@@ -36,12 +36,12 @@ async function mount(comments: RawComment[] | Error = []): Promise<PreviewPinsEl
   return el;
 }
 
-const q = (el: PreviewPinsElement, sel: string) => el.shadowRoot!.querySelector<HTMLElement>(sel);
-const qa = (el: PreviewPinsElement, sel: string) => Array.from(el.shadowRoot!.querySelectorAll<HTMLElement>(sel));
+const q = (el: PinbackElement, sel: string) => el.shadowRoot!.querySelector<HTMLElement>(sel);
+const qa = (el: PinbackElement, sel: string) => Array.from(el.shadowRoot!.querySelectorAll<HTMLElement>(sel));
 
-const pins = (el: PreviewPinsElement) => qa(el, '.pin');
+const pins = (el: PinbackElement) => qa(el, '.pin');
 
-describe('<preview-pins>', () => {
+describe('<pinback-widget>', () => {
   beforeEach(() => {
     document.head.innerHTML = '';
     document.body.innerHTML = PAGE;
@@ -54,7 +54,7 @@ describe('<preview-pins>', () => {
   });
 
   it('registers the custom element on import', () => {
-    expect(customElements.get(TAG_NAME)).toBe(PreviewPinsElement);
+    expect(customElements.get(TAG_NAME)).toBe(PinbackElement);
   });
 
   it('disables comment mode when no auth worker is configured', async () => {
@@ -66,14 +66,14 @@ describe('<preview-pins>', () => {
   });
 
   it('prefers the meta tag over config', async () => {
-    document.head.innerHTML = `<meta name="preview-pins" content="owner=meta;repo=web;pr=9;sha=${SHA}">`;
+    document.head.innerHTML = `<meta name="pinback" content="owner=meta;repo=web;pr=9;sha=${SHA}">`;
     const el = await mount();
     expect(el.context).toMatchObject({ owner: 'meta', prNumber: 9 });
   });
 
   it('shows "No PR context" without one', async () => {
     const el = document.createElement(TAG_NAME);
-    if (!(el instanceof PreviewPinsElement)) throw new Error('element not upgraded');
+    if (!(el instanceof PinbackElement)) throw new Error('element not upgraded');
     document.body.append(el);
     await flush();
     expect(q(el, '[role="status"]')!.textContent).toBe('No PR context');

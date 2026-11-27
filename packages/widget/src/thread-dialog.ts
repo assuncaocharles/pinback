@@ -1,4 +1,4 @@
-import type { PinComment, Thread, ThreadState, Viewer } from '@preview-pins/core';
+import type { PinComment, Thread, ThreadState, Viewer } from '@assuncaocharles/pinback-core';
 import { Composer } from './composer.js';
 import { h, relativeTime } from './dom.js';
 import { sanitize, stripFooter } from './sanitize.js';

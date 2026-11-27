@@ -5,7 +5,7 @@ Status: Accepted
 
 ## Context
 
-preview-pins makes several decisions that aren't visible in the code alone
+pinback makes several decisions that aren't visible in the code alone
 (security boundaries, storage format, anchoring trade-offs). Contributors need
 to know why things are the way they are.
 

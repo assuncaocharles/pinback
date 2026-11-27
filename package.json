@@ -1,5 +1,5 @@
 {
-  "name": "preview-pins-monorepo",
+  "name": "pinback-monorepo",
   "private": true,
   "type": "module",
   "license": "MIT",
@@ -9,7 +9,7 @@
   },
   "scripts": {
     "build": "pnpm -r --filter './packages/*' build",
-    "build:example": "pnpm --filter @preview-pins/example-react-vite build",
+    "build:example": "pnpm --filter @assuncaocharles/pinback-example build",
     "lint": "eslint .",
     "typecheck": "pnpm -r typecheck && tsc -p e2e --noEmit",
     "test": "vitest run",
@@ -18,12 +18,13 @@
     "size": "size-limit",
     "changeset": "changeset",
     "version-packages": "changeset version",
-    "release": "pnpm build && changeset publish",
-    "build:example:e2e": "PREVIEW_PINS=1 PREVIEW_PINS_AUTH_ORIGIN=http://localhost:8787 pnpm --filter @preview-pins/example-react-vite build",
+    "release": "pnpm build && node scripts/publish.mjs",
+    "build:example:e2e": "PREVIEW_PINS=1 PREVIEW_PINS_AUTH_ORIGIN=http://localhost:8787 pnpm --filter @assuncaocharles/pinback-example build",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs",
-    "demo:record": "RECORD_DEMO=1 playwright test record-demo && ffmpeg -loglevel error -y -f concat -safe 0 -i test-results/demo/frames.txt -vf \"fps=12,scale=800:-1:flags=lanczos,split[s0][s1];[s0]palettegen=stats_mode=diff[p];[s1][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle\" -loop 0 docs/public/demo.gif"
+    "demo:record": "RECORD_DEMO=1 playwright test record-demo && ffmpeg -loglevel error -y -f concat -safe 0 -i test-results/demo/frames.txt -vf \"fps=12,scale=800:-1:flags=lanczos,split[s0][s1];[s0]palettegen=stats_mode=diff[p];[s1][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle\" -loop 0 docs/public/demo.gif",
+    "release:dry-run": "pnpm build && DRY_RUN=1 node scripts/publish.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.1",

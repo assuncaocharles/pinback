@@ -1,8 +1,14 @@
 [
   {
     "name": "widget (IIFE, script tag)",
-    "path": "packages/widget/dist/preview-pins.js",
+    "path": "packages/widget/dist/pinback.js",
     "limit": "30 kB",
+    "gzip": true
+  },
+  {
+    "name": "screenshot capture (lazy, loaded on demand)",
+    "path": "packages/widget/dist/pinback-capture.mjs",
+    "limit": "15 kB",
     "gzip": true
   }
 ]

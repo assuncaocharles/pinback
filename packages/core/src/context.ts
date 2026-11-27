@@ -2,7 +2,7 @@ import type { PRContext } from './types.js';
 
 export type PartialPRContext = Partial<PRContext>;
 
-const META_NAME = 'preview-pins';
+const META_NAME = 'pinback';
 
 /** Accepts only GitHub-safe owner/repo names, to keep garbage out of API URLs. */
 const NAME_RE = /^[A-Za-z0-9_.-]{1,100}$/;
@@ -20,7 +20,7 @@ function clean(input: Record<string, unknown>): PartialPRContext {
 }
 
 /**
- * Reads `<meta name="preview-pins" content="owner=..;repo=..;pr=..;sha=..">`.
+ * Reads `<meta name="pinback" content="owner=..;repo=..;pr=..;sha=..">`.
  * The key=value;... form is easy to emit from shell in CI.
  */
 export function fromMeta(doc: Document): PartialPRContext {

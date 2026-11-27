@@ -5,6 +5,8 @@ export interface FrameConfig {
   allowedOrigins: string;
   allowedRepos: string[];
   apiBase: string;
+  /** Whether the worker has an R2 bucket for screenshots. */
+  screenshots: boolean;
 }
 
 /** Shape the callback client reads from #pp-data. */

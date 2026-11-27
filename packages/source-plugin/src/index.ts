@@ -5,7 +5,7 @@ import type { Plugin } from 'vite';
 
 export const ATTRIBUTE = 'data-pp-src';
 
-export interface PreviewPinsSourceOptions {
+export interface PinbackSourceOptions {
   /**
    * Whether to tag elements. Defaults to `process.env.PREVIEW_PINS === '1'`
    * so production builds stay untouched unless CI opts in.
@@ -37,7 +37,7 @@ export function findRepoRoot(from: string): string | null {
 /** Babel plugin: adds data-pp-src="path:line:col" to every host JSX element. */
 export function tagJsx(relPath: string): PluginObject {
   return {
-    name: 'preview-pins-source',
+    name: 'pinback-source',
     visitor: {
       JSXOpeningElement(path) {
         const { node } = path;
@@ -86,13 +86,13 @@ export async function transformSource(
  * comment on the right file and line (M4, ADR 10). Runs before the JSX
  * transform. Does nothing unless enabled.
  */
-export function previewPinsSource(options: PreviewPinsSourceOptions = {}): Plugin {
+export function pinbackSource(options: PinbackSourceOptions = {}): Plugin {
   const enabled = options.enabled ?? process.env.PREVIEW_PINS === '1';
   const include = options.include ?? DEFAULT_INCLUDE;
   let repoRoot = options.repoRoot ? resolve(options.repoRoot) : '';
 
   return {
-    name: 'preview-pins:source',
+    name: 'pinback:source',
     enforce: 'pre',
     apply: () => enabled,
     configResolved(config) {

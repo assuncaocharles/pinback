@@ -1,4 +1,4 @@
-# preview-pins
+# pinback
 
 > Working name. Pin review comments to any element on a preview deployment.
 > The comments land on the GitHub PR.
@@ -30,7 +30,7 @@ The comment storage format is specified in
 | Package | What it is |
 | --- | --- |
 | [`packages/core`](packages/core) | Framework-agnostic logic: PR context, `Backend` interface, and later anchoring, metadata and threads |
-| [`packages/widget`](packages/widget) | `<preview-pins>` custom element in Shadow DOM. One script tag, under 30 KB gzip |
+| [`packages/widget`](packages/widget) | `<pinback-widget>` custom element in Shadow DOM. One script tag, under 30 KB gzip |
 | [`packages/auth-worker`](packages/auth-worker) | Cloudflare Worker for GitHub App OAuth and the auth iframe. Stores nothing |
 | [`packages/source-plugin`](packages/source-plugin) | Vite plugin that tags JSX with `data-pp-src` in preview builds (M4) |
 | [`examples/react-vite`](examples/react-vite) | Demo app, deployed per PR to Cloudflare Pages |
@@ -38,8 +38,8 @@ The comment storage format is specified in
 ## Usage (preview)
 
 ```html
-<meta name="preview-pins" content="owner=acme;repo=web;pr=42;sha=0123abc...;auth=https://preview-pins-auth.you.workers.dev">
-<script src="https://unpkg.com/@preview-pins/widget/dist/preview-pins.js" defer></script>
+<meta name="pinback" content="owner=acme;repo=web;pr=42;sha=0123abc...;auth=https://preview-pins-auth.you.workers.dev">
+<script src="https://unpkg.com/@assuncaocharles/pinback/dist/pinback.js" defer></script>
 ```
 
 Generate the meta tag in CI from your PR number and head SHA. If it's absent,
@@ -57,11 +57,18 @@ pnpm test             # Vitest, all packages
 pnpm lint && pnpm typecheck
 pnpm size             # widget bundle budget
 pnpm build:example:e2e && pnpm e2e   # Playwright: built demo + auth worker harness
-pnpm --filter @preview-pins/example-react-vite dev
+pnpm --filter @assuncaocharles/pinback-example dev
 ```
 
 Add a changeset (`pnpm changeset`) to any PR that changes a published
-package.
+package. Releases publish to npm with trusted publishing; see
+[docs/releasing.md](docs/releasing.md).
+
+## Optional screenshots
+
+With an R2 bucket bound to the worker, reviewers can attach a screenshot of
+the pinned area to their comment. It's off by default. See
+[ADR 11](docs/adr/0011-screenshots.md) for the trade-offs.
 
 ## Accessibility
 

@@ -1,0 +1,71 @@
+name: Preview deploy
+
+# Builds examples/react-vite for each PR and deploys it to Cloudflare Pages
+# as a branch preview (https://pr-<n>.<project>.pages.dev). The PR context is
+# baked into a <meta name="preview-pins"> tag from the env vars below.
+#
+# Required repository secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID.
+# Optional repository variable: CF_PAGES_PROJECT (default preview-pins-demo).
+# PRs from forks don't get secrets, so the deploy step is skipped for them.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    env:
+      CF_PAGES_PROJECT: ${{ vars.CF_PAGES_PROJECT || 'preview-pins-demo' }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Build example with PR context
+        run: pnpm build:example
+        env:
+          PREVIEW_PINS: '1'
+          PREVIEW_PINS_PR: ${{ github.event.pull_request.number }}
+          PREVIEW_PINS_SHA: ${{ github.event.pull_request.head.sha }}
+      - name: Deploy to Cloudflare Pages
+        id: deploy
+        working-directory: examples/react-vite
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::warning::Cloudflare secrets not set; skipping preview deploy."
+            exit 0
+          fi
+          pnpm run deploy:preview --branch "pr-${{ github.event.pull_request.number }}" --commit-hash "${{ github.event.pull_request.head.sha }}"
+          echo "url=https://pr-${{ github.event.pull_request.number }}.${CF_PAGES_PROJECT}.pages.dev" >> "$GITHUB_OUTPUT"
+      - name: Comment preview URL
+        if: steps.deploy.outputs.url
+        uses: actions/github-script@v8
+        env:
+          PREVIEW_URL: ${{ steps.deploy.outputs.url }}
+        with:
+          script: |
+            const marker = '<!-- preview-pins:deploy -->';
+            const body = `${marker}\nPreview: ${process.env.PREVIEW_URL}\n\nBuilt from ${context.payload.pull_request.head.sha.slice(0, 7)}.`;
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number });
+            const existing = comments.find((c) => c.body?.startsWith(marker));
+            if (existing) await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            else await github.rest.issues.createComment({ owner, repo, issue_number, body });

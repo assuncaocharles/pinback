@@ -1,0 +1,27 @@
+{
+  "name": "@preview-pins/example-react-vite",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --port 4173 --strictPort",
+    "typecheck": "tsc --noEmit",
+    "deploy:preview": "wrangler pages deploy dist --project-name=${CF_PAGES_PROJECT:-preview-pins-demo}"
+  },
+  "dependencies": {
+    "@preview-pins/widget": "workspace:*",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@preview-pins/source-plugin": "workspace:*",
+    "@types/node": "^22.20.7",
+    "@types/react": "^19.3.3",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "vite": "^8.4.0",
+    "wrangler": "^4.168.0"
+  }
+}

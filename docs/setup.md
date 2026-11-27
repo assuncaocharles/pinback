@@ -8,8 +8,8 @@ Add one script tag and one meta tag to the HTML your previews serve. Build
 the meta tag from CI variables:
 
 ```html
-<meta name="preview-pins" content="owner=ORG;repo=REPO;pr=123;sha=FULL_COMMIT_SHA;auth=https://preview-pins-auth.YOU.workers.dev">
-<script src="https://unpkg.com/@preview-pins/widget/dist/preview-pins.js" defer></script>
+<meta name="pinback" content="owner=ORG;repo=REPO;pr=123;sha=FULL_COMMIT_SHA;auth=https://preview-pins-auth.YOU.workers.dev">
+<script src="https://unpkg.com/@assuncaocharles/pinback/dist/pinback.js" defer></script>
 ```
 
 - `pr` and `sha` come from the pull request (in GitHub Actions:
@@ -22,7 +22,7 @@ the meta tag from CI variables:
 Only add the tags in preview builds. The widget does nothing useful in
 production.
 
-**Optional, recommended:** add `@preview-pins/source-plugin` to your Vite
+**Optional, recommended:** add `@assuncaocharles/pinback-source-plugin` to your Vite
 config and build previews with `PREVIEW_PINS=1`. Pins on components the PR
 changes then land as review comments on the right file and line. See
 [source-line-comments.md](source-line-comments.md).
@@ -104,6 +104,25 @@ pnpm vite build && pnpm wrangler deploy \
 - Check that it's up: `https://<worker>/health` should return `ok`.
 - Then set the `PP_AUTH_ORIGIN` repository variable (or the `auth=` meta tag
   field) to the worker URL so previews enable sign-in.
+
+### Optional: screenshots
+
+Reviewers can attach a screenshot of the pinned area. Images are stored in
+your R2 bucket and embedded in the comment. Read
+[ADR 11](adr/0011-screenshots.md) first: images are public by URL, so think
+twice for private repos.
+
+1. Cloudflare → **R2** → create a bucket, e.g. `pinback-screenshots`.
+   R2 needs a payment method on the account, even on the free tier.
+   Optionally add a lifecycle rule that deletes objects after 90 days.
+2. Add **Workers R2 Storage: Edit** to the Cloudflare API token.
+3. Set the repository variable `PP_SCREENSHOTS_BUCKET` to the bucket name
+   and run **Deploy auth worker**. Deploying locally instead: uncomment the
+   `[[r2_buckets]]` block in `packages/auth-worker/wrangler.toml`.
+
+The **Attach screenshot** checkbox then appears in the composer. Serve
+`pinback-capture.mjs` next to `pinback.js` (unpkg/jsdelivr do this
+automatically), or set `config.captureUrl`.
 
 ### Preview cleanup
 

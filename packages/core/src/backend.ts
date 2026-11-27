@@ -35,7 +35,7 @@ export interface RawComment {
   inReplyTo?: string;
   /**
    * Review thread roots only, when known (needs a token): GitHub's own
-   * "resolved" state, which wins over preview-pins state events (ADR 5).
+   * "resolved" state, which wins over pinback state events (ADR 5).
    */
   threadResolved?: boolean;
 }

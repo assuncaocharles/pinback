@@ -41,8 +41,14 @@ describe('sanitize', () => {
 
   it('removes our footer only', () => {
     const frag = sanitize(
-      '<p>Real text</p><p><sub>📌 Pinned on <a href="https://p/x"><code>/x</code></a> at abc1234 · preview-pins</sub></p>',
+      '<p>Real text</p><p><sub>📌 Pinned on <a href="https://p/x"><code>/x</code></a> at abc1234 · pinback</sub></p>',
     );
     expect(html(stripFooter(frag))).toBe('<p>Real text</p>');
   });
+
+  it('also removes the pre-rename footer', () => {
+    const frag = sanitize('<p>Old</p><p><sub>📌 Pinned on <code>/</code> at abc1234 · preview-pins</sub></p>');
+    expect(html(stripFooter(frag))).toBe('<p>Old</p>');
+  });
 });
+

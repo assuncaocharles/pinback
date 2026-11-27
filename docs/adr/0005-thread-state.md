@@ -45,7 +45,7 @@ the state event and also resolves the GitHub thread, best-effort.
 
 - No extra requests: state comes from the same comment list we already
   fetch, which works anonymously and with ETags.
-- History is visible on GitHub ("✅ Resolved via preview-pins"), and reopen is
+- History is visible on GitHub ("✅ Resolved via pinback"), and reopen is
   just another event.
 - Resolving adds a comment to the PR. This is acceptable, since GitHub's own
   "resolve conversation" also shows in the timeline.

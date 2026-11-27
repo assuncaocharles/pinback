@@ -1,5 +1,12 @@
 name: Release
 
+# Changesets flow (docs/releasing.md):
+# - pushes to main with pending changesets open/update a "Version Packages" PR;
+# - merging that PR publishes the bumped packages to npm.
+# Publishing is opt-in via the NPM_PUBLISH repository variable. It uses npm
+# trusted publishing (OIDC, no token) and falls back to the NPM_TOKEN secret
+# when one is set (needed once, for the very first publish).
+
 on:
   push:
     branches: [main]
@@ -9,7 +16,7 @@ concurrency: release-${{ github.ref }}
 permissions:
   contents: write
   pull-requests: write
-  id-token: write
+  id-token: write # npm trusted publishing + provenance
 
 jobs:
   release:
@@ -21,20 +28,14 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: pnpm
-          registry-url: https://registry.npmjs.org
+      # Trusted publishing needs npm >= 11.5.
+      - run: npm install -g npm@11
       - run: pnpm install --frozen-lockfile
-      # Publishing is opt-in: until an NPM_TOKEN secret exists, this workflow
-      # only opens/updates the "Version packages" PR and never tries npm.
-      - name: Check for npm credentials
-        id: npm
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: echo "enabled=$([ -n "$NPM_TOKEN" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
       - name: Version PR or publish
         uses: changesets/action@v1
         with:
           version: pnpm version-packages
-          publish: ${{ steps.npm.outputs.enabled == 'true' && 'pnpm release' || '' }}
+          publish: ${{ vars.NPM_PUBLISH == 'true' && 'pnpm release' || '' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

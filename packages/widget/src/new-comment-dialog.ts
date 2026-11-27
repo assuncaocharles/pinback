@@ -1,4 +1,4 @@
-import type { Viewer } from '@preview-pins/core';
+import type { Viewer } from '@assuncaocharles/pinback-core';
 import { Composer, type ComposerCallbacks } from './composer.js';
 import { h } from './dom.js';
 
@@ -7,13 +7,17 @@ export class NewCommentDialog {
   readonly element: HTMLDialogElement;
   readonly #composer: Composer;
   readonly #target: HTMLParagraphElement;
+  readonly #attach: HTMLInputElement;
+  readonly #attachLabel: HTMLLabelElement;
   #restore: HTMLElement | null = null;
   #onClose: (() => void) | null = null;
 
   constructor(cb: ComposerCallbacks) {
     this.#target = h('p', { class: 'muted target' });
+    this.#attach = h('input', { type: 'checkbox', id: 'pp-attach' });
+    this.#attachLabel = h('label', { for: 'pp-attach', class: 'attach', hidden: true }, this.#attach, ' Attach screenshot');
     this.#composer = new Composer(
-      { label: 'Comment', submitLabel: 'Comment', placeholder: 'Leave a comment…' },
+      { label: 'Comment', submitLabel: 'Comment', placeholder: 'Leave a comment…', extra: [this.#attachLabel] },
       {
         ...cb,
         submit: async (text) => {
@@ -52,6 +56,16 @@ export class NewCommentDialog {
 
   setViewer(viewer: Viewer | null): void {
     this.#composer.setViewer(viewer);
+  }
+
+  /** Shown only when the auth worker has screenshot storage. */
+  setScreenshotsAvailable(available: boolean): void {
+    this.#attachLabel.hidden = !available;
+    if (!available) this.#attach.checked = false;
+  }
+
+  get attachScreenshot(): boolean {
+    return !this.#attachLabel.hidden && this.#attach.checked;
   }
 
   close(): void {

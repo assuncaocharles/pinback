@@ -4,7 +4,7 @@ import { FrameServer } from './frame-server.js';
 const config = JSON.parse(document.getElementById('pp-data')?.textContent ?? '{}') as FrameConfig;
 
 if (window.parent === window) {
-  document.body.textContent = 'This page is the preview-pins auth frame. It only works when embedded by the widget.';
+  document.body.textContent = 'This page is the pinback auth frame. It only works when embedded by the widget.';
 } else {
   const server = new FrameServer({
     config,

@@ -1,9 +1,10 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { decodeMetadata, type Backend, type RawComment, type RpcMethod, type RpcMethods, type Viewer } from '@preview-pins/core';
-import { rawPin } from '@preview-pins/core/testing';
+import { decodeMetadata, type Backend, type RawComment, type RpcMethod, type RpcMethods, type Viewer } from '@assuncaocharles/pinback-core';
+import { rawPin } from '@assuncaocharles/pinback-core/testing';
+import { setCaptureLoader } from './capture-loader.js';
 import { setAuthFrameFactory, type AuthFrame, type FrameClientEvents } from './frame-client.js';
-import { PreviewPinsElement, TAG_NAME } from './index.js';
+import { PinbackElement, TAG_NAME } from './index.js';
 
 const SHA = 'abc1234def5678abc1234def5678abc1234def56';
 const CTX = { owner: 'acme', repo: 'web', prNumber: 5, commitSha: SHA };
@@ -16,6 +17,7 @@ class FakeFrame implements AuthFrame {
   calls: { method: RpcMethod; params: unknown }[] = [];
   redeemed: string[] = [];
   nextId = 100;
+  features = { screenshots: false };
   constructor(readonly origin: string, readonly events: FrameClientEvents, viewer: Viewer | null) {
     this.viewer = viewer;
   }
@@ -31,6 +33,7 @@ class FakeFrame implements AuthFrame {
     if (method === 'listComments') return Promise.resolve([] as RpcMethods[M][1]);
     if (method === 'canMaintain') return Promise.resolve(false as RpcMethods[M][1]);
     if (method === 'renderMarkdown') return Promise.resolve('<p><strong>bold</strong></p>' as RpcMethods[M][1]);
+    if (method === 'uploadScreenshot') return Promise.resolve({ url: `${this.origin}/s/acme/web/${'x'.repeat(22)}.png` } as RpcMethods[M][1]);
     return Promise.resolve(null as RpcMethods[M][1]);
   }
   redeem(blob: string) {
@@ -47,10 +50,14 @@ const flush = () => new Promise((r) => setTimeout(r, 30));
 
 let frame: FakeFrame;
 
-async function mount(opts: { viewer?: Viewer | null; comments?: RawComment[] } = {}) {
-  setAuthFrameFactory((origin, events) => (frame = new FakeFrame(origin, events, opts.viewer === undefined ? ALICE : opts.viewer)));
+async function mount(opts: { viewer?: Viewer | null; comments?: RawComment[]; screenshots?: boolean } = {}) {
+  setAuthFrameFactory((origin, events) => {
+    frame = new FakeFrame(origin, events, opts.viewer === undefined ? ALICE : opts.viewer);
+    frame.features = { screenshots: !!opts.screenshots };
+    return frame;
+  });
   const el = document.createElement(TAG_NAME);
-  if (!(el instanceof PreviewPinsElement)) throw new Error('not upgraded');
+  if (!(el instanceof PinbackElement)) throw new Error('not upgraded');
   const backend: Backend = { kind: 'fake', listComments: () => Promise.resolve(opts.comments ?? []) };
   el.backend = backend;
   el.config = { ...CTX, authOrigin: AUTH };
@@ -59,9 +66,9 @@ async function mount(opts: { viewer?: Viewer | null; comments?: RawComment[] } =
   return el;
 }
 
-const sr = (el: PreviewPinsElement) => el.shadowRoot!;
-const btn = (el: PreviewPinsElement, sel: string) => sr(el).querySelector<HTMLButtonElement>(sel)!;
-const newDialog = (el: PreviewPinsElement) => sr(el).querySelector<HTMLDialogElement>('dialog.composer-dialog')!;
+const sr = (el: PinbackElement) => el.shadowRoot!;
+const btn = (el: PinbackElement, sel: string) => sr(el).querySelector<HTMLButtonElement>(sel)!;
+const newDialog = (el: PinbackElement) => sr(el).querySelector<HTMLDialogElement>('dialog.composer-dialog')!;
 
 describe('writing (M2)', () => {
   beforeEach(() => {
@@ -264,3 +271,60 @@ describe('review threads (M4)', () => {
     expect(create.parentKind).toBeUndefined();
   });
 });
+
+describe('screenshots (ADR 11)', () => {
+  beforeEach(() => {
+    document.body.innerHTML = PAGE;
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue(new DOMRect(100, 200, 120, 40));
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    setAuthFrameFactory(null);
+    setCaptureLoader(null);
+  });
+
+  function pickAndType(el: PinbackElement) {
+    el.commentMode = true;
+    document.querySelector('button')!.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
+    const dialog = newDialog(el);
+    dialog.querySelector('textarea')!.value = 'Look at this';
+    dialog.querySelector('textarea')!.dispatchEvent(new Event('input'));
+    return dialog;
+  }
+
+  it('hides the checkbox when the worker has no screenshot storage', async () => {
+    const el = await mount({ screenshots: false });
+    const dialog = pickAndType(el);
+    expect(dialog.querySelector<HTMLLabelElement>('label.attach')!.hidden).toBe(true);
+  });
+
+  it('captures the picked element, uploads it, and embeds the URL', async () => {
+    const capture = vi.fn(() => Promise.resolve(new Blob([new Uint8Array([0x89, 0x50])], { type: 'image/png' })));
+    setCaptureLoader(() => Promise.resolve({ captureAround: capture }));
+    const el = await mount({ screenshots: true });
+    const dialog = pickAndType(el);
+    const box = dialog.querySelector<HTMLInputElement>('#pp-attach')!;
+    expect(dialog.querySelector<HTMLLabelElement>('label.attach')!.hidden).toBe(false);
+    box.checked = true;
+    dialog.querySelector('form')!.requestSubmit();
+    await flush();
+    expect(capture).toHaveBeenCalledWith(document.querySelector('button'), { exclude: el });
+    const upload = frame.calls.find((c) => c.method === 'uploadScreenshot')!.params as RpcMethods['uploadScreenshot'][0];
+    expect(upload.type).toBe('image/png');
+    const create = frame.calls.find((c) => c.method === 'createComment')!.params as RpcMethods['createComment'][0];
+    expect(create.screenshotUrl).toBe(`${AUTH}/s/acme/web/${'x'.repeat(22)}.png`);
+  });
+
+  it('does not post when the capture fails, and says how to post without it', async () => {
+    setCaptureLoader(() => Promise.reject(new Error('module blocked')));
+    const el = await mount({ screenshots: true });
+    const dialog = pickAndType(el);
+    dialog.querySelector<HTMLInputElement>('#pp-attach')!.checked = true;
+    dialog.querySelector('form')!.requestSubmit();
+    await flush();
+    expect(frame.calls.some((c) => c.method === 'createComment')).toBe(false);
+    expect(dialog.querySelector('[role="alert"]')!.textContent).toContain('Untick "Attach screenshot"');
+    expect(dialog.open).toBe(true);
+  });
+});
+

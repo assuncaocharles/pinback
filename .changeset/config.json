@@ -7,5 +7,5 @@
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": ["@preview-pins/example-react-vite", "@preview-pins/auth-worker"]
+  "ignore": ["@assuncaocharles/pinback-example", "@assuncaocharles/pinback-auth-worker"]
 }

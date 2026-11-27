@@ -14,8 +14,9 @@ import {
   type Thread,
   type ThreadState,
   type Viewer,
-} from '@preview-pins/core';
+} from '@assuncaocharles/pinback-core';
 import { h } from './dom.js';
+import { loadCapture } from './capture-loader.js';
 import { FrameBackend, FrameError, createAuthFrame, type AuthFrame } from './frame-client.js';
 import { PinLayer } from './layer.js';
 import { renderList } from './list-panel.js';
@@ -24,9 +25,9 @@ import { Picker, describeTarget } from './picker.js';
 import { styles } from './styles.js';
 import { ThreadDialog } from './thread-dialog.js';
 
-export const TAG_NAME = 'preview-pins';
+export const TAG_NAME = 'pinback-widget';
 
-export interface PreviewPinsConfig {
+export interface PinbackConfig {
   owner?: string;
   repo?: string;
   prNumber?: number;
@@ -37,6 +38,8 @@ export interface PreviewPinsConfig {
   authOrigin?: string;
   /** How often to re-check for new comments while the tab is visible. Default 60 s. */
   pollIntervalMs?: number;
+  /** URL of pinback-capture.mjs. Defaults to next to the widget script. */
+  captureUrl?: string;
 }
 
 type Status =
@@ -49,12 +52,12 @@ const AUTH_HASH = '#pp_auth=';
 const POPUP_NAME = 'pp-auth';
 
 /**
- * `<preview-pins>`: the widget root.
+ * `<pinback-widget>`: the widget root.
  * M1: read pins and threads. M2: sign in through the auth frame, create
  * pins, reply, resolve/reopen. The token never enters this page (ADR 7).
  */
-export class PreviewPinsElement extends HTMLElement {
-  #config: PreviewPinsConfig = {};
+export class PinbackElement extends HTMLElement {
+  #config: PinbackConfig = {};
   #anonBackend: Backend | null = null;
   #backendOverride: Backend | null = null;
   #frame: AuthFrame | null = null;
@@ -73,6 +76,7 @@ export class PreviewPinsElement extends HTMLElement {
   #abort: AbortController | null = null;
   #pendingBlob: string | null = null;
   #pendingMeta: PinMetadata | null = null;
+  #pendingTarget: Element | null = null;
 
   readonly #root: ShadowRoot;
   readonly #toggle: HTMLButtonElement;
@@ -149,11 +153,11 @@ export class PreviewPinsElement extends HTMLElement {
 
   // ---- public API --------------------------------------------------------
 
-  get config(): PreviewPinsConfig {
+  get config(): PinbackConfig {
     return this.#config;
   }
 
-  set config(value: PreviewPinsConfig) {
+  set config(value: PinbackConfig) {
     this.#config = { ...value };
     this.#anonBackend = null;
     if (this.isConnected) this.#start();
@@ -286,6 +290,7 @@ export class PreviewPinsElement extends HTMLElement {
       .ready()
       .then(async () => {
         if (this.#frame !== frame) return;
+        this.#newDialog.setScreenshotsAvailable(frame.features.screenshots);
         this.#setViewer(frame.viewer);
         if (this.#pendingBlob) {
           const blob = this.#pendingBlob;
@@ -360,13 +365,20 @@ export class PreviewPinsElement extends HTMLElement {
     this.#setComments(this.#comments.filter((c) => !this.#local.has(c.id)));
   }
 
-  async #post(text: string, meta: PinMetadata, parentKind?: RawComment['kind']): Promise<RawComment> {
+  async #post(text: string, meta: PinMetadata, parentKind?: RawComment['kind'], screenshotUrl?: string): Promise<RawComment> {
     const frame = this.#frame;
     const ctx = this.#context;
     if (!frame || !ctx) throw new Error('Commenting is not configured for this preview.');
     try {
       const previewUrl = `${window.location.origin}${window.location.pathname}${window.location.search}`;
-      const created = await frame.call('createComment', { ctx, text, meta, previewUrl, ...(parentKind ? { parentKind } : {}) });
+      const created = await frame.call('createComment', {
+        ctx,
+        text,
+        meta,
+        previewUrl,
+        ...(parentKind ? { parentKind } : {}),
+        ...(screenshotUrl ? { screenshotUrl } : {}),
+      });
       this.#addComment(created);
       return created;
     } catch (err) {
@@ -389,17 +401,37 @@ export class PreviewPinsElement extends HTMLElement {
     const meta = this.#baseMeta(window.location.pathname, null);
     meta.anchor = describeElement(el, point);
     this.#pendingMeta = meta;
+    this.#pendingTarget = el;
     this.commentMode = false;
     this.#newDialog.open(describeTarget(el), this.#toggle, () => {
       this.#pendingMeta = null;
+      this.#pendingTarget = null;
     });
   }
 
   async #createPin(text: string): Promise<void> {
     const meta = this.#pendingMeta;
     if (!meta) return;
-    await this.#post(text, meta);
+    const screenshotUrl = this.#newDialog.attachScreenshot ? await this.#screenshot() : undefined;
+    await this.#post(text, meta, undefined, screenshotUrl);
     this.#announce('Comment posted');
+  }
+
+  /** Captures the area around the picked element and stores it via the frame (ADR 11). */
+  async #screenshot(): Promise<string> {
+    const target = this.#pendingTarget;
+    const frame = this.#frame;
+    const ctx = this.#context;
+    if (!target?.isConnected || !frame || !ctx) throw new Error('The pinned element is no longer on the page.');
+    try {
+      const capture = await loadCapture(this.#config.captureUrl);
+      const blob = await capture.captureAround(target, { exclude: this });
+      const { url } = await frame.call('uploadScreenshot', { ctx, data: await blob.arrayBuffer(), type: blob.type });
+      return url;
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : 'unknown error';
+      throw new Error(`Screenshot failed (${reason}). Untick "Attach screenshot" to post without it.`, { cause: err });
+    }
   }
 
   async #reply(thread: Thread, text: string): Promise<void> {

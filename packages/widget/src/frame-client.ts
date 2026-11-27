@@ -10,7 +10,7 @@ import {
   type RpcMethod,
   type RpcMethods,
   type Viewer,
-} from '@preview-pins/core';
+} from '@assuncaocharles/pinback-core';
 
 export class FrameError extends Error {
   constructor(
@@ -33,6 +33,8 @@ export interface AuthFrame {
   readonly origin: string;
   readonly iframe: HTMLElement;
   readonly viewer: Viewer | null;
+  /** Optional worker features, known once ready. */
+  readonly features: { screenshots: boolean };
   ready(): Promise<void>;
   signInUrl(returnUrl: string): string;
   call<M extends RpcMethod>(method: M, params: RpcMethods[M][0]): Promise<RpcMethods[M][1]>;
@@ -66,6 +68,7 @@ export class FrameClient implements AuthFrame {
   #pending = new Map<number, { resolve(v: unknown): void; reject(e: Error): void; timer: number }>();
   #viewer: Viewer | null = null;
   #challenge = '';
+  #features = { screenshots: false };
   readonly #events: FrameClientEvents;
 
   constructor(origin: string, events: FrameClientEvents) {
@@ -73,7 +76,7 @@ export class FrameClient implements AuthFrame {
     this.#events = events;
     this.iframe = document.createElement('iframe');
     this.iframe.src = `${origin}/frame`;
-    this.iframe.title = 'preview-pins sign-in';
+    this.iframe.title = 'pinback sign-in';
     this.iframe.setAttribute('aria-hidden', 'true');
     this.iframe.tabIndex = -1;
     this.iframe.className = 'auth-frame';
@@ -83,9 +86,14 @@ export class FrameClient implements AuthFrame {
         'load',
         () => {
           this.#rawCall('hello', {})
-            .then(({ viewer, challenge }) => {
+            .then(({ viewer, challenge, features }) => {
               this.#viewer = viewer;
               this.#challenge = challenge;
+              // Frames from older workers send no features: treat as all off.
+              const f: unknown = features;
+              this.#features = {
+                screenshots: typeof f === 'object' && f !== null && (f as { screenshots?: unknown }).screenshots === true,
+              };
               resolve();
             })
             .catch(reject);
@@ -104,6 +112,10 @@ export class FrameClient implements AuthFrame {
 
   get viewer(): Viewer | null {
     return this.#viewer;
+  }
+
+  get features(): { screenshots: boolean } {
+    return this.#features;
   }
 
   /** URL to open in the sign-in popup. */

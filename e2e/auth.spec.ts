@@ -3,7 +3,7 @@ import { CONTEXT_QUERY, CORS, blockUnmockedGitHub, mockGitHub, pinComment } from
 
 const TOKEN = 'ghu_E2E_SECRET_TOKEN_do_not_leak';
 const AUTH = 'http://localhost:8787';
-const widget = 'preview-pins';
+const widget = 'pinback-widget';
 
 /** Records every message the host window receives, so we can prove none carries the token. */
 async function recordHostMessages(page: Page) {
@@ -96,11 +96,11 @@ test.describe('auth and writing (M2)', () => {
     expect(created).toHaveLength(1);
     expect(created[0]!.auth).toBe(`Bearer ${TOKEN}`);
     expect(created[0]!.frameUrl).toBe(`${AUTH}/frame`);
-    expect(created[0]!.body).toContain('<!-- preview-pins:v1 ');
+    expect(created[0]!.body).toContain('<!-- pinback:v1 ');
 
     // Nothing the host page can read contains the token.
     const leaks = await page.evaluate((token) => {
-      const host = document.querySelector('preview-pins');
+      const host = document.querySelector('pinback-widget');
       const haystacks: Record<string, string> = {
         localStorage: JSON.stringify(Object.entries(localStorage)),
         sessionStorage: JSON.stringify(Object.entries(sessionStorage)),
@@ -116,7 +116,7 @@ test.describe('auth and writing (M2)', () => {
 
     // The host page can't reach into the frame's storage...
     const frameAccess = await page.evaluate(() => {
-      const iframe = document.querySelector('preview-pins')!.shadowRoot!.querySelector('iframe')!;
+      const iframe = document.querySelector('pinback-widget')!.shadowRoot!.querySelector('iframe')!;
       try {
         return String(iframe.contentWindow!.localStorage.length);
       } catch (e) {
@@ -216,7 +216,7 @@ test.describe('auth and writing (M2)', () => {
 
     await signIn(page);
     await page.keyboard.press('Escape');
-    const w = page.locator('preview-pins');
+    const w = page.locator('pinback-widget');
     await w.getByRole('button', { name: 'Comment', exact: true }).click();
     await page.getByTestId('checkout-button').click();
     await w.getByRole('dialog', { name: 'New comment' }).getByRole('textbox', { name: 'Comment' }).fill('On the line');
@@ -226,4 +226,45 @@ test.describe('auth and writing (M2)', () => {
     expect(posts).toHaveLength(1);
     expect(posts[0]!.body).toMatchObject({ path, line, side: 'RIGHT', commit_id: 'abc1234def5678abc1234def5678abc1234def56' });
   });
+
+  test('attaches a real screenshot, stored by the worker and embedded in the comment (ADR 11)', async ({ page }) => {
+    await mockGitHub(page, []);
+    const uploads: { from: string; type: string | undefined }[] = [];
+    page.context().on('request', (r) => {
+      if (r.url().startsWith(`${AUTH}/screenshots`)) uploads.push({ from: r.frame().url(), type: r.headers()['content-type'] });
+    });
+    let body = '';
+    await page.context().route('https://api.github.com/repos/acme/web/issues/12/comments', async (route) => {
+      const req = route.request();
+      if (req.method() !== 'POST') return route.fallback();
+      body = (req.postDataJSON() as { body: string }).body;
+      await route.fulfill({ status: 201, headers: CORS, json: { ...pinComment('x', {}), id: 4343, body, body_html: '<p>With picture</p>', user: { login: 'octocat', avatar_url: '' } } });
+    });
+
+    await page.goto(`/${CONTEXT_QUERY}`);
+    await signIn(page);
+    await page.keyboard.press('Escape');
+    const w = page.locator('pinback-widget');
+    await w.getByRole('button', { name: 'Comment', exact: true }).click();
+    await page.getByTestId('cart-total').click();
+    const dialog = w.getByRole('dialog', { name: 'New comment' });
+    await dialog.getByRole('textbox', { name: 'Comment' }).fill('With picture');
+    await dialog.getByRole('checkbox', { name: 'Attach screenshot' }).check();
+    await dialog.getByRole('button', { name: 'Comment', exact: true }).click();
+    await expect(dialog).toBeHidden({ timeout: 15_000 });
+
+    // Uploaded by the auth frame, not the host page.
+    expect(uploads).toHaveLength(1);
+    expect(uploads[0]!.from).toBe(`${AUTH}/frame`);
+    const m = /!\[Screenshot of the pinned element\]\((http:\/\/localhost:8787\/s\/acme\/web\/[A-Za-z0-9_-]{22}\.(?:webp|png))\)/.exec(body);
+    expect(m, body).not.toBeNull();
+
+    // The stored image is served, as an image, with a locked-down CSP.
+    const img = await page.request.get(m![1]!);
+    expect(img.status()).toBe(200);
+    expect(img.headers()['content-type']).toMatch(/^image\/(webp|png)$/);
+    expect(img.headers()['content-security-policy']).toContain('sandbox');
+    expect((await img.body()).length).toBeGreaterThan(1000);
+  });
 });
+

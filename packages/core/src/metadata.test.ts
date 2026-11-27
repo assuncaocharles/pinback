@@ -34,7 +34,7 @@ describe('metadata', () => {
     const body = formatCommentBody({ text: 'The button is **too** small', meta, previewUrl: 'https://pr-1.x.dev/checkout' });
     expect(decodeMetadata(body)).toEqual(meta);
     expect(stripMetadata(body)).toContain('The button is **too** small');
-    expect(stripMetadata(body)).not.toContain('preview-pins:v1');
+    expect(stripMetadata(body)).not.toContain('pinback:v1');
   });
 
   it('uses the last block when the text quotes another pin', () => {
@@ -45,26 +45,33 @@ describe('metadata', () => {
 
   it.each([
     ['no block', 'just a comment'],
-    ['other marker', '<!-- preview-pins:deploy -->'],
-    ['future version', '<!-- preview-pins:v2 {"anchor":{}} -->'],
-    ['bad json', '<!-- preview-pins:v1 {nope} -->'],
-    ['array', '<!-- preview-pins:v1 [] -->'],
-    ['missing viewport', '<!-- preview-pins:v1 {"anchor":{},"url":"/","sha":"a","parent":null} -->'],
-    ['relative url', '<!-- preview-pins:v1 {"anchor":{},"viewport":{"w":1,"h":1},"url":"x","sha":"a","parent":null} -->'],
-    ['bad parent', '<!-- preview-pins:v1 {"anchor":{},"viewport":{"w":1,"h":1},"url":"/","sha":"a","parent":"1"} -->'],
-    ['bad state', '<!-- preview-pins:v1 {"anchor":{},"viewport":{"w":1,"h":1},"url":"/","sha":"a","parent":1,"state":"x"} -->'],
+    ['other marker', '<!-- pinback:deploy -->'],
+    ['future version', '<!-- pinback:v2 {"anchor":{}} -->'],
+    ['bad json', '<!-- pinback:v1 {nope} -->'],
+    ['array', '<!-- pinback:v1 [] -->'],
+    ['missing viewport', '<!-- pinback:v1 {"anchor":{},"url":"/","sha":"a","parent":null} -->'],
+    ['relative url', '<!-- pinback:v1 {"anchor":{},"viewport":{"w":1,"h":1},"url":"x","sha":"a","parent":null} -->'],
+    ['bad parent', '<!-- pinback:v1 {"anchor":{},"viewport":{"w":1,"h":1},"url":"/","sha":"a","parent":"1"} -->'],
+    ['bad state', '<!-- pinback:v1 {"anchor":{},"viewport":{"w":1,"h":1},"url":"/","sha":"a","parent":1,"state":"x"} -->'],
   ])('rejects %s', (_, body) => {
     expect(decodeMetadata(body)).toBeNull();
   });
 
   it('drops malformed anchor fields but keeps the pin', () => {
-    const body = '<!-- preview-pins:v1 {"anchor":{"testId":5,"rect":{"x":2,"y":-1}},"viewport":{"w":1,"h":1},"url":"/","sha":"a","parent":null} -->';
+    const body = '<!-- pinback:v1 {"anchor":{"testId":5,"rect":{"x":2,"y":-1}},"viewport":{"w":1,"h":1},"url":"/","sha":"a","parent":null} -->';
     expect(decodeMetadata(body)?.anchor).toEqual({ rect: { x: 1, y: 0 } });
   });
 
   it('formats replies with a reply footer', () => {
     const body = formatCommentBody({ text: 'Agreed', meta: { ...meta, parent: 12 } });
-    expect(body).toContain('Reply via preview-pins');
+    expect(body).toContain('Reply via pinback');
     expect(decodeMetadata(body)?.parent).toBe(12);
+  });
+});
+
+describe('legacy marker', () => {
+  it('still reads pins written before the rename (preview-pins:v1)', () => {
+    const legacy = encodeMetadata(meta).replace('<!-- pinback:v1 ', '<!-- preview-pins:v1 ');
+    expect(decodeMetadata(`Old pin\n\n${legacy}`)).toEqual(meta);
   });
 });

@@ -69,7 +69,7 @@ jobs:
         uses: actions/github-script@v8
         with:
           script: |
-            const marker = '<!-- preview-pins:deploy -->';
+            const marker = '<!-- pinback:deploy -->';
             const { owner, repo } = context.repo;
             for (const pr of process.env.PRS.split(/\s+/).filter(Boolean)) {
               const issue_number = Number(pr);

@@ -1,9 +1,10 @@
-import { PreviewPinsElement, TAG_NAME } from './element.js';
+import { setAssetBase } from './capture-loader.js';
+import { PinbackElement, TAG_NAME } from './element.js';
 
-export { PreviewPinsElement, TAG_NAME, type PreviewPinsConfig } from './element.js';
+export { PinbackElement, TAG_NAME, type PinbackConfig } from './element.js';
 
 export function define(): void {
-  if (!customElements.get(TAG_NAME)) customElements.define(TAG_NAME, PreviewPinsElement);
+  if (!customElements.get(TAG_NAME)) customElements.define(TAG_NAME, PinbackElement);
 }
 
 /**
@@ -14,6 +15,7 @@ export function define(): void {
 function autoMount(): void {
   define();
   const script = document.currentScript;
+  if (script instanceof HTMLScriptElement && script.src) setAssetBase(script.src);
   if (script?.hasAttribute('data-no-auto-mount')) return;
   const mount = () => {
     if (!document.querySelector(TAG_NAME)) document.body.append(document.createElement(TAG_NAME));

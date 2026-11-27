@@ -48,7 +48,7 @@ describe('auth worker', () => {
 
     it('embeds the config for the client', async () => {
       const config = dataOf(await (await call('/frame')).text()) as FrameConfig;
-      expect(config).toEqual({ allowedOrigins: env.ALLOWED_ORIGINS, allowedRepos: ['acme/web'], apiBase: 'https://api.github.com' });
+      expect(config).toEqual({ allowedOrigins: env.ALLOWED_ORIGINS, allowedRepos: ['acme/web'], apiBase: 'https://api.github.com', screenshots: false });
     });
 
     it("refuses to be framed by anyone when the allowlist is empty", async () => {
@@ -172,5 +172,83 @@ describe('seal/unseal', () => {
     const blob = await seal(SESSION_KEY, { a: 1 });
     expect(await unseal(SESSION_KEY, blob)).toEqual({ a: 1 });
     expect(await unseal('BAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8', blob)).toBeNull();
+  });
+});
+
+describe('screenshots (ADR 11)', () => {
+  class MemoryBucket {
+    store = new Map<string, { body: Uint8Array; contentType: string }>();
+    put(key: string, body: Uint8Array, opts: { httpMetadata: { contentType: string } }) {
+      this.store.set(key, { body, contentType: opts.httpMetadata.contentType });
+      return Promise.resolve({});
+    }
+    get(key: string) {
+      const v = this.store.get(key);
+      return Promise.resolve(v ? { body: v.body } : null);
+    }
+  }
+  const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
+  const withBucket = () => {
+    const bucket = new MemoryBucket();
+    return { bucket, e: { ...env, SCREENSHOTS: bucket as unknown as R2Bucket } };
+  };
+  const upload = (e: Env, init: { origin?: string; token?: string | null; type?: string; body?: Uint8Array; repo?: string } = {}) =>
+    call(`/screenshots?owner=acme&repo=${init.repo ?? 'web'}`, {
+      method: 'POST',
+      headers: {
+        Origin: init.origin ?? W,
+        'Content-Type': init.type ?? 'image/png',
+        ...(init.token === null ? {} : { Authorization: `Bearer ${init.token ?? 'ghu_x'}` }),
+      },
+      body: init.body ?? PNG,
+    }, e);
+
+  it('is off without an R2 binding', async () => {
+    expect((await upload(env)).status).toBe(501);
+  });
+
+  it('stores an image under an unguessable key and serves it locked down', async () => {
+    const { bucket, e } = withBucket();
+    const gh = vi.fn((u: string, init: RequestInit) => {
+      expect(u).toBe('https://api.github.com/repos/acme/web');
+      expect((init.headers as Record<string, string>).Authorization).toBe('Bearer ghu_x');
+      return Promise.resolve(new Response('{}', { status: 200 }));
+    });
+    vi.stubGlobal('fetch', gh);
+    const res = await upload(e);
+    expect(res.status).toBe(201);
+    const { url } = await res.json<{ url: string }>();
+    expect(url).toMatch(/^https:\/\/auth\.test\/s\/acme\/web\/[A-Za-z0-9_-]{22}\.png$/);
+    expect(bucket.store.size).toBe(1);
+
+    const served = await call(new URL(url).pathname, undefined, e);
+    expect(served.status).toBe(200);
+    expect(served.headers.get('Content-Type')).toBe('image/png');
+    expect(served.headers.get('Content-Security-Policy')).toContain('sandbox');
+    expect(served.headers.get('X-Content-Type-Options')).toBe('nosniff');
+    expect(new Uint8Array(await served.arrayBuffer())).toEqual(PNG);
+  });
+
+  it('refuses uploads from other origins, without a token, or for repos the token cannot see', async () => {
+    const { e } = withBucket();
+    vi.stubGlobal('fetch', () => Promise.resolve(new Response('{}', { status: 404 })));
+    expect((await upload(e, { origin: PREVIEW })).status).toBe(403);
+    expect((await upload(e, { token: null })).status).toBe(401);
+    expect((await upload(e)).status).toBe(403);
+    expect((await upload(e, { repo: 'not-allowed' })).status).toBe(403);
+  });
+
+  it('rejects non-images and oversized bodies', async () => {
+    const { e } = withBucket();
+    vi.stubGlobal('fetch', () => Promise.resolve(new Response('{}', { status: 200 })));
+    expect((await upload(e, { type: 'text/html', body: new TextEncoder().encode('<script>') })).status).toBe(415);
+    expect((await upload(e, { body: new TextEncoder().encode('<svg onload=alert(1)>') })).status).toBe(415);
+    expect((await upload(e, { body: new Uint8Array(2 * 1024 * 1024 + 1).fill(0x89) })).status).toBe(413);
+  });
+
+  it('404s on unknown or malformed keys', async () => {
+    const { e } = withBucket();
+    expect((await call('/s/acme/web/nope.png', undefined, e)).status).toBe(404);
+    expect((await call('/s/../../etc/passwd', undefined, e)).status).toBe(404);
   });
 });

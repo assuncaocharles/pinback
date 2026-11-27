@@ -1,4 +1,4 @@
-import { normalisePath, type Thread } from '@preview-pins/core';
+import { normalisePath, type Thread } from '@assuncaocharles/pinback-core';
 import { h } from './dom.js';
 
 export interface ListModel {

@@ -1,7 +1,23 @@
 {
-  "name": "@preview-pins/core",
+  "name": "@assuncaocharles/pinback-core",
   "version": "0.0.0",
-  "description": "Framework-agnostic logic for preview-pins: anchoring, metadata, threads, GitHub backend.",
+  "description": "Framework-agnostic core for pinback: anchoring, comment metadata, threads and the GitHub backend.",
+  "keywords": [
+    "github",
+    "pull-request",
+    "code-review",
+    "annotations",
+    "anchoring"
+  ],
+  "homepage": "https://assuncaocharles.github.io/pinback/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/assuncaocharles/pinback.git",
+    "directory": "packages/core"
+  },
+  "bugs": {
+    "url": "https://github.com/assuncaocharles/pinback/issues"
+  },
   "license": "MIT",
   "type": "module",
   "sideEffects": false,

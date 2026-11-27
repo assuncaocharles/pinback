@@ -239,7 +239,9 @@ textarea:focus-visible { outline: 2px solid var(--pp-focus); outline-offset: 0; 
 .composer .muted { margin: 0; }
 .error { margin: 0; color: var(--pp-warn-fg); font-size: 13px; }
 .error:empty { display: none; }
-.actions { display: flex; justify-content: flex-end; gap: 8px; }
+.actions { display: flex; justify-content: flex-end; align-items: center; gap: 8px; }
+.attach { margin-right: auto; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; }
+.attach input { margin: 0; accent-color: var(--pp-accent); }
 
 /* Account row in the list panel */
 .account {

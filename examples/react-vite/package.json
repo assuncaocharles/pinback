@@ -1,5 +1,5 @@
 {
-  "name": "@preview-pins/example-react-vite",
+  "name": "@assuncaocharles/pinback-example",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -11,12 +11,12 @@
     "deploy:preview": "wrangler pages deploy dist --project-name=${CF_PAGES_PROJECT:-preview-pins-demo}"
   },
   "dependencies": {
-    "@preview-pins/widget": "workspace:*",
+    "@assuncaocharles/pinback": "workspace:*",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },
   "devDependencies": {
-    "@preview-pins/source-plugin": "workspace:*",
+    "@assuncaocharles/pinback-source-plugin": "workspace:*",
     "@types/node": "^22.20.7",
     "@types/react": "^19.3.3",
     "@types/react-dom": "^19.3.0",

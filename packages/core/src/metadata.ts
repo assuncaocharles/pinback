@@ -1,7 +1,7 @@
 /**
  * The machine-readable part of a pin comment, stored in a hidden HTML comment:
  *
- *   <!-- preview-pins:v1 {"anchor":{...},"viewport":{...},...} -->
+ *   <!-- pinback:v1 {"anchor":{...},"viewport":{...},...} -->
  *
  * See docs/metadata-format.md for the full spec.
  */
@@ -43,7 +43,8 @@ export interface PinMetadata {
   state?: ThreadState;
 }
 
-const MARKER_RE = /<!-- preview-pins:v(\d+) ([\s\S]*?) -->/g;
+// "preview-pins" is the pre-rename marker; still read so older pins keep working.
+const MARKER_RE = /<!-- (?:pinback|preview-pins):v(\d+) ([\s\S]*?) -->/g;
 
 /**
  * JSON.stringify, then escape `<` and `>` as \u003c / \u003e. Both are valid
@@ -52,7 +53,7 @@ const MARKER_RE = /<!-- preview-pins:v(\d+) ([\s\S]*?) -->/g;
  */
 export function encodeMetadata(meta: PinMetadata): string {
   const json = JSON.stringify(meta).replace(/</g, '\\u003c').replace(/>/g, '\\u003e');
-  return `<!-- preview-pins:v${METADATA_VERSION} ${json} -->`;
+  return `<!-- pinback:v${METADATA_VERSION} ${json} -->`;
 }
 
 /**
@@ -147,12 +148,12 @@ export function formatCommentBody({ text, meta, previewUrl, elementAt }: FormatO
   const at = elementAt ? ` · element at \`${elementAt}\`` : '';
   const footer =
     meta.parent === null
-      ? `<sub>📌 Pinned on ${where} at ${meta.sha.slice(0, 7)}${at} · preview-pins</sub>`
+      ? `<sub>📌 Pinned on ${where} at ${meta.sha.slice(0, 7)}${at} · pinback</sub>`
       : meta.state === 'resolved'
-        ? `<sub>✅ Resolved via preview-pins</sub>`
+        ? `<sub>✅ Resolved via pinback</sub>`
         : meta.state === 'open'
-          ? `<sub>↩︎ Reopened via preview-pins</sub>`
-          : `<sub>↩︎ Reply via preview-pins</sub>`;
+          ? `<sub>↩︎ Reopened via pinback</sub>`
+          : `<sub>↩︎ Reply via pinback</sub>`;
   const body = text.trim();
   return `${body ? `${body}\n\n` : ''}${footer}\n\n${encodeMetadata(meta)}`;
 }

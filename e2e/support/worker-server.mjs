@@ -10,9 +10,35 @@ const here = dirname(fileURLToPath(import.meta.url));
 const dist = join(here, '../../packages/auth-worker/dist');
 const { default: worker } = await import(join(dist, 'worker/index.js'));
 
+// The worker checks repo access with GitHub before storing a screenshot.
+// Answer that server-side call here: our fake token can see acme/web only.
+const realFetch = globalThis.fetch;
+globalThis.fetch = (input, init) => {
+  const url = typeof input === 'string' ? input : input.url;
+  if (url.startsWith('https://api.github.com/repos/')) {
+    const auth = new Headers(init?.headers).get('authorization');
+    const ok = auth === `Bearer ${E2E_TOKEN}` && url === 'https://api.github.com/repos/acme/web';
+    return Promise.resolve(Response.json({}, { status: ok ? 200 : 404 }));
+  }
+  return realFetch(input, init);
+};
+
 const PORT = Number(process.env.PP_WORKER_PORT ?? 8787);
 const ORIGIN = `http://localhost:${PORT}`;
 export const E2E_TOKEN = 'ghu_E2E_SECRET_TOKEN_do_not_leak';
+
+/** In-memory stand-in for an R2 bucket (enough for put/get). */
+const screenshots = new Map();
+const bucket = {
+  async put(key, body, opts) {
+    screenshots.set(key, { body: new Uint8Array(body), contentType: opts?.httpMetadata?.contentType });
+    return {};
+  },
+  async get(key) {
+    const v = screenshots.get(key);
+    return v ? { body: v.body } : null;
+  },
+};
 
 const env = {
   ALLOWED_ORIGINS: 'http://localhost:4173',
@@ -21,6 +47,7 @@ const env = {
   GITHUB_CLIENT_SECRET: 'e2e-secret',
   SESSION_KEY: 'AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8',
   GITHUB_OAUTH_BASE: `${ORIGIN}/__mock`,
+  SCREENSHOTS: bucket,
 };
 
 async function mock(url, req, body) {
@@ -51,7 +78,7 @@ createServer(async (req, res) => {
     let response;
     if (url.pathname.startsWith('/__mock/')) {
       response = await mock(url, req, body);
-    } else if (url.pathname === '/frame.js' || url.pathname === '/callback.js') {
+    } else if (url.pathname === '/frame.js' || url.pathname === '/callback.js' || url.pathname.startsWith('/chunks/')) {
       response = new Response(await readFile(join(dist, 'public', url.pathname)), {
         headers: { 'Content-Type': 'text/javascript' },
       });

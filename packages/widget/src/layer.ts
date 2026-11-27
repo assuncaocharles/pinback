@@ -1,4 +1,4 @@
-import { ANCHOR_APPROXIMATE, ANCHOR_THRESHOLD, AnchorIndex, matchAnchor, pinPosition, type Thread } from '@preview-pins/core';
+import { ANCHOR_APPROXIMATE, ANCHOR_THRESHOLD, AnchorIndex, matchAnchor, pinPosition, type Thread } from '@assuncaocharles/pinback-core';
 import { h } from './dom.js';
 
 interface Pin {
@@ -129,7 +129,7 @@ export class PinLayer {
   }
 
   #onMutations = (records: MutationRecord[]): void => {
-    // Ignore mutations to our own host element (e.g. attribute changes on <preview-pins>).
+    // Ignore mutations to our own host element (e.g. attribute changes on <pinback-widget>).
     if (records.every((r) => r.target === this.#host)) return;
     if (this.#reanchorQueued) return;
     this.#reanchorQueued = true;

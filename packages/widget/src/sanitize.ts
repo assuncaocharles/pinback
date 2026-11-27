@@ -96,12 +96,12 @@ function clean(parent: ParentNode): void {
   }
 }
 
-/** Removes the "📌 Pinned on … · preview-pins" footer we append to every comment. */
+/** Removes the "📌 Pinned on … · pinback" footer we append to every comment. */
 export function stripFooter(fragment: DocumentFragment): DocumentFragment {
   for (const p of Array.from(fragment.querySelectorAll('p'))) {
     const sub = p.querySelector('sub');
     const text = p.textContent;
-    if (sub && p.children.length === 1 && /preview-pins\s*$/.test(text.trim())) p.remove();
+    if (sub && p.children.length === 1 && /(?:pinback|preview-pins)\s*$/.test(text.trim())) p.remove();
   }
   return fragment;
 }

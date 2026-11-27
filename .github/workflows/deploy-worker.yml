@@ -21,6 +21,7 @@ permissions:
 #   variables PP_GITHUB_CLIENT_ID (optional until the GitHub App exists; a secret works too)
 #             PP_ALLOWED_ORIGINS (default: https://*.<CF_PAGES_PROJECT>.pages.dev)
 #             PP_ALLOWED_REPOS (default: this repository)
+#             PP_SCREENSHOTS_BUCKET (optional R2 bucket name; enables screenshots, ADR 11)
 
 jobs:
   deploy:
@@ -32,6 +33,7 @@ jobs:
       PP_GITHUB_CLIENT_ID: ${{ vars.PP_GITHUB_CLIENT_ID || secrets.PP_GITHUB_CLIENT_ID }}
       PP_ALLOWED_ORIGINS: ${{ vars.PP_ALLOWED_ORIGINS || format('https://*.{0}.pages.dev', vars.CF_PAGES_PROJECT || 'preview-pins-demo') }}
       PP_ALLOWED_REPOS: ${{ vars.PP_ALLOWED_REPOS || github.repository }}
+      PP_SCREENSHOTS_BUCKET: ${{ vars.PP_SCREENSHOTS_BUCKET }}
       PP_GITHUB_CLIENT_SECRET: ${{ secrets.PP_GITHUB_CLIENT_SECRET }}
       PP_SESSION_KEY: ${{ secrets.PP_SESSION_KEY }}
     steps:
@@ -62,7 +64,12 @@ jobs:
         run: |
           set -o pipefail
           pnpm exec vite build
-          pnpm exec wrangler deploy \
+          # Screenshots are opt-in: bind the R2 bucket only when one is named.
+          cp wrangler.toml wrangler.ci.toml
+          if [ -n "$PP_SCREENSHOTS_BUCKET" ]; then
+            printf '\n[[r2_buckets]]\nbinding = "SCREENSHOTS"\nbucket_name = "%s"\n' "$PP_SCREENSHOTS_BUCKET" >> wrangler.ci.toml
+          fi
+          pnpm exec wrangler deploy -c wrangler.ci.toml \
             --var "GITHUB_CLIENT_ID:$PP_GITHUB_CLIENT_ID" \
             --var "ALLOWED_ORIGINS:$PP_ALLOWED_ORIGINS" \
             --var "ALLOWED_REPOS:$PP_ALLOWED_REPOS" | tee deploy.log
@@ -98,5 +105,6 @@ jobs:
             echo "- Allowed origins: \`$PP_ALLOWED_ORIGINS\`"
             echo "- Client ID set: $([ -n "$PP_GITHUB_CLIENT_ID" ] && echo yes || echo no)"
             echo "- Client secret set: $([ -n "$PP_GITHUB_CLIENT_SECRET" ] && echo yes || echo no)"
+            echo "- Screenshots: $([ -n "$PP_SCREENSHOTS_BUCKET" ] && echo "on (R2 bucket $PP_SCREENSHOTS_BUCKET)" || echo off)"
           } >> "$GITHUB_STEP_SUMMARY"
           echo "::notice title=Auth worker URL::$URL (callback: $URL/auth/callback)"

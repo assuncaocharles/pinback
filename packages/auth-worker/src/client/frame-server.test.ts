@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, expect, it, vi } from 'vitest';
-import { decodeMetadata, type PinMetadata, type RpcEvent, type RpcResponse } from '@preview-pins/core';
+import { decodeMetadata, type PinMetadata, type RpcEvent, type RpcResponse } from '@assuncaocharles/pinback-core';
 import { sha256b64url } from '../crypto.js';
 import { FrameServer, type FrameDeps } from './frame-server.js';
 
@@ -27,7 +27,7 @@ function setup(opts: { fetch?: FrameDeps['fetch']; allowedRepos?: string[]; sign
   }
   const fetch = vi.fn(opts.fetch ?? (() => Promise.resolve(new Response('[]'))));
   const server = new FrameServer({
-    config: { allowedOrigins: 'https://*.demo.pages.dev', allowedRepos: opts.allowedRepos ?? [], apiBase: API },
+    config: { allowedOrigins: 'https://*.demo.pages.dev', allowedRepos: opts.allowedRepos ?? [], apiBase: API, screenshots: true },
     storage,
     fetch,
     workerOrigin: W,
@@ -175,7 +175,7 @@ describe('FrameServer state events', () => {
     });
     await send('hello');
     const ok = await send('createComment', { ctx, text: '', meta: { ...meta, parent: 1, state: 'resolved' } });
-    expect(result<{ body: string }>(ok).body).toContain('✅ Resolved via preview-pins');
+    expect(result<{ body: string }>(ok).body).toContain('✅ Resolved via pinback');
     const bad = await send('createComment', { ctx, text: '  ', meta: { ...meta, parent: 1 } });
     expect(bad.msg).toMatchObject({ ok: false, error: { code: 'invalid' } });
   });
@@ -308,5 +308,52 @@ describe('FrameServer source-line comments (M4)', () => {
     await send('hello');
     const list = result<{ id: string; threadResolved?: boolean }[]>(await send('listComments', { ctx }));
     expect(list).toEqual([expect.objectContaining({ id: '10', threadResolved: true })]);
+  });
+});
+
+describe('FrameServer screenshots (ADR 11)', () => {
+  it('advertises the feature in hello', async () => {
+    const { send } = setup();
+    expect(result<{ features: { screenshots: boolean } }>(await send('hello')).features).toEqual({ screenshots: true });
+  });
+
+  it('uploads with the token to the worker and returns the URL', async () => {
+    const { send, fetch } = setup({
+      signedIn: {},
+      fetch: (url, init) => {
+        expect(String(url)).toBe(`${W}/screenshots?owner=acme&repo=web`);
+        expect((init!.headers as Record<string, string>).Authorization).toBe(`Bearer ${TOKEN}`);
+        return Promise.resolve(new Response(JSON.stringify({ url: `${W}/s/acme/web/${'a'.repeat(22)}.png` }), { status: 201 }));
+      },
+    });
+    await send('hello');
+    const data = new Uint8Array([0x89, 0x50, 0x4e, 0x47]).buffer;
+    const reply = await send('uploadScreenshot', { ctx, data, type: 'image/png' });
+    expect(result<{ url: string }>(reply).url).toContain('/s/acme/web/');
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects other types and oversized images before uploading', async () => {
+    const { send, fetch } = setup({ signedIn: {} });
+    await send('hello');
+    expect((await send('uploadScreenshot', { ctx, data: new ArrayBuffer(4), type: 'image/svg+xml' })).msg).toMatchObject({ ok: false, error: { code: 'invalid' } });
+    expect((await send('uploadScreenshot', { ctx, data: new ArrayBuffer(3 * 1024 * 1024), type: 'image/png' })).msg).toMatchObject({ ok: false, error: { code: 'invalid' } });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('embeds only screenshots hosted by this worker', async () => {
+    const { send } = setup({
+      signedIn: {},
+      fetch: (_u, init) => {
+        const body = (JSON.parse(init!.body as string) as { body: string }).body;
+        return Promise.resolve(new Response(JSON.stringify({ id: 3, body, html_url: 'u', created_at: 'x', updated_at: 'x', user: null }), { status: 201 }));
+      },
+    });
+    await send('hello');
+    const good = `${W}/s/acme/web/${'b'.repeat(22)}.png`;
+    const ok = await send('createComment', { ctx, text: 'Look', meta, screenshotUrl: good });
+    expect(result<{ body: string }>(ok).body).toContain(`![Screenshot of the pinned element](${good})`);
+    const bad = await send('createComment', { ctx, text: 'Look', meta, screenshotUrl: 'https://evil.test/x.png' });
+    expect(bad.msg).toMatchObject({ ok: false, error: { code: 'invalid' } });
   });
 });

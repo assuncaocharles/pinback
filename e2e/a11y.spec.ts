@@ -30,7 +30,10 @@ const threads = () => [
 
 for (const scheme of ['light', 'dark'] as const) {
   test.describe(`widget accessibility (${scheme})`, () => {
-    test.use({ colorScheme: scheme });
+    // Reduced motion zeroes the widget's transitions (--pp-duration), so axe
+    // measures final colours instead of a frame mid-transition. Without it,
+    // CI sampled a hovered button halfway between two backgrounds.
+    test.use({ colorScheme: scheme, reducedMotion: 'reduce' });
 
     test('read-only states', async ({ page, context }) => {
       await blockUnmockedGitHub(context);

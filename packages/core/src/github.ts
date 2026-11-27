@@ -1,4 +1,5 @@
 import { BackendError, type AuthorAssociation, type Backend, type RawComment } from './backend.js';
+import type { PrFile } from './diff.js';
 import type { PRContext } from './types.js';
 
 export interface GitHubBackendOptions {
@@ -19,6 +20,7 @@ interface CacheEntry {
 }
 
 interface GitHubComment {
+  in_reply_to_id?: number;
   id: number;
   body?: string | null;
   body_html?: string | null;
@@ -83,6 +85,88 @@ export class GitHubBackend implements Backend {
       body: JSON.stringify({ body }),
     });
     return toRaw((await res.json()) as GitHubComment, 'issue');
+  }
+
+  /** GET /pulls/{n}/files (paginated, ETag-cached). */
+  async listPullFiles(ctx: PRContext, signal?: AbortSignal): Promise<PrFile[]> {
+    const files = (await this.#paginate(`${this.#repoUrl(ctx)}/pulls/${ctx.prNumber}/files?per_page=100`, signal)) as unknown as {
+      filename: string;
+      status: string;
+      patch?: string;
+    }[];
+    return files.map((f) => ({ filename: f.filename, status: f.status, ...(f.patch ? { patch: f.patch } : {}) }));
+  }
+
+  /** POST /pulls/{n}/comments on the RIGHT side of `line`. Requires a token. */
+  async createReviewComment(
+    ctx: PRContext,
+    args: { body: string; path: string; line: number; commitSha: string },
+  ): Promise<RawComment> {
+    const res = await this.#send(`${this.#repoUrl(ctx)}/pulls/${ctx.prNumber}/comments`, {
+      method: 'POST',
+      headers: await this.#headers({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ body: args.body, commit_id: args.commitSha, path: args.path, line: args.line, side: 'RIGHT' }),
+    });
+    return toRaw((await res.json()) as GitHubComment, 'review');
+  }
+
+  /** POST /pulls/{n}/comments/{id}/replies: a native reply in a review thread. */
+  async replyToReviewComment(ctx: PRContext, commentId: string, body: string): Promise<RawComment> {
+    const res = await this.#send(
+      `${this.#repoUrl(ctx)}/pulls/${ctx.prNumber}/comments/${encodeURIComponent(commentId)}/replies`,
+      { method: 'POST', headers: await this.#headers({ 'Content-Type': 'application/json' }), body: JSON.stringify({ body }) },
+    );
+    return toRaw((await res.json()) as GitHubComment, 'review');
+  }
+
+  async #graphql<T>(query: string, variables: Record<string, unknown>): Promise<T> {
+    const res = await this.#send(graphqlUrl(this.#apiBase), {
+      method: 'POST',
+      headers: await this.#headers({ 'Content-Type': 'application/json', Accept: 'application/json' }),
+      body: JSON.stringify({ query, variables }),
+    });
+    const json = (await res.json()) as { data?: T; errors?: { message: string }[] };
+    if (json.errors?.length || !json.data) throw new BackendError(json.errors?.[0]?.message ?? 'GraphQL error', 'http');
+    return json.data;
+  }
+
+  /** Review threads keyed by their first comment's REST id. Requires a token. */
+  async reviewThreadStates(ctx: PRContext): Promise<Map<string, ReviewThreadState>> {
+    const out = new Map<string, ReviewThreadState>();
+    let after: string | null = null;
+    for (let page = 0; page < 10; page++) {
+      type Data = {
+        repository: {
+          pullRequest: {
+            reviewThreads: {
+              pageInfo: { hasNextPage: boolean; endCursor: string | null };
+              nodes: { id: string; isResolved: boolean; comments: { nodes: { databaseId: number | null }[] } }[];
+            };
+          } | null;
+        } | null;
+      };
+      const data: Data = await this.#graphql<Data>(
+        `query($owner:String!,$repo:String!,$pr:Int!,$after:String){repository(owner:$owner,name:$repo){pullRequest(number:$pr){reviewThreads(first:100,after:$after){pageInfo{hasNextPage endCursor}nodes{id isResolved comments(first:1){nodes{databaseId}}}}}}}`,
+        { owner: ctx.owner, repo: ctx.repo, pr: ctx.prNumber, after },
+      );
+      const threads = data.repository?.pullRequest?.reviewThreads;
+      if (!threads) break;
+      for (const t of threads.nodes) {
+        const first = t.comments.nodes[0]?.databaseId;
+        if (first) out.set(String(first), { threadId: t.id, isResolved: t.isResolved });
+      }
+      if (!threads.pageInfo.hasNextPage) break;
+      after = threads.pageInfo.endCursor;
+    }
+    return out;
+  }
+
+  /** Resolves or unresolves a review thread on GitHub. Requires a token. */
+  async setReviewThreadResolved(threadId: string, resolved: boolean): Promise<void> {
+    const mutation = resolved
+      ? 'mutation($id:ID!){resolveReviewThread(input:{threadId:$id}){thread{id}}}'
+      : 'mutation($id:ID!){unresolveReviewThread(input:{threadId:$id}){thread{id}}}';
+    await this.#graphql(mutation, { id: threadId });
   }
 
   /** POST /markdown in GFM mode, so #123 and @mentions resolve against the repo. */
@@ -206,5 +290,16 @@ function toRaw(c: GitHubComment, kind: RawComment['kind']): RawComment {
     updatedAt: c.updated_at,
     htmlUrl: c.html_url,
     kind,
+    ...(c.in_reply_to_id ? { inReplyTo: String(c.in_reply_to_id) } : {}),
   };
+}
+
+export interface ReviewThreadState {
+  threadId: string;
+  isResolved: boolean;
+}
+
+function graphqlUrl(apiBase: string): string {
+  // api.github.com/graphql, or GHES: https://host/api/v3 -> https://host/api/graphql
+  return apiBase.endsWith('/api/v3') ? `${apiBase.slice(0, -3)}graphql` : `${apiBase}/graphql`;
 }

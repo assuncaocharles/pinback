@@ -358,13 +358,13 @@ export class PreviewPinsElement extends HTMLElement {
     this.#setComments(this.#comments.filter((c) => !this.#local.has(c.id)));
   }
 
-  async #post(text: string, meta: PinMetadata): Promise<RawComment> {
+  async #post(text: string, meta: PinMetadata, parentKind?: RawComment['kind']): Promise<RawComment> {
     const frame = this.#frame;
     const ctx = this.#context;
     if (!frame || !ctx) throw new Error('Commenting is not configured for this preview.');
     try {
       const previewUrl = `${window.location.origin}${window.location.pathname}${window.location.search}`;
-      const created = await frame.call('createComment', { ctx, text, meta, previewUrl });
+      const created = await frame.call('createComment', { ctx, text, meta, previewUrl, ...(parentKind ? { parentKind } : {}) });
       this.#addComment(created);
       return created;
     } catch (err) {
@@ -401,14 +401,14 @@ export class PreviewPinsElement extends HTMLElement {
   }
 
   async #reply(thread: Thread, text: string): Promise<void> {
-    await this.#post(text, this.#baseMeta(thread.root.meta.url, Number(thread.id)));
+    await this.#post(text, this.#baseMeta(thread.root.meta.url, Number(thread.id)), thread.root.kind);
     this.#announce('Reply posted');
   }
 
   async #setThreadState(thread: Thread, state: ThreadState): Promise<void> {
     const meta = this.#baseMeta(thread.root.meta.url, Number(thread.id));
     meta.state = state;
-    await this.#post('', meta);
+    await this.#post('', meta, thread.root.kind);
     this.#announce(state === 'resolved' ? 'Thread resolved' : 'Thread reopened');
   }
 

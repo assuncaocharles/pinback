@@ -3,6 +3,8 @@ import { decodeMetadata, stripMetadata, type PinMetadata, type ThreadState } fro
 
 export interface PinComment {
   id: string;
+  /** Where it lives on GitHub: PR conversation or a diff-line review thread. */
+  kind: RawComment['kind'];
   author: RawComment['author'];
   createdAt: string;
   htmlUrl: string;
@@ -36,11 +38,20 @@ const MAINTAINERS: ReadonlySet<AuthorAssociation> = new Set(['OWNER', 'MEMBER', 
  */
 export function buildThreads(comments: readonly RawComment[]): Thread[] {
   const pins: PinComment[] = [];
+  const nativeReplies: RawComment[] = [];
+  const resolvedOnGitHub = new Map<string, boolean>();
   for (const c of comments) {
+    if (c.threadResolved !== undefined) resolvedOnGitHub.set(c.id, c.threadResolved);
     const meta = decodeMetadata(c.body);
-    if (!meta) continue;
+    if (!meta) {
+      // Replies typed in GitHub's own review UI carry no metadata; attach
+      // them to their thread below via in_reply_to.
+      if (c.kind === 'review' && c.inReplyTo) nativeReplies.push(c);
+      continue;
+    }
     pins.push({
       id: c.id,
+      kind: c.kind,
       author: c.author,
       createdAt: c.createdAt,
       htmlUrl: c.htmlUrl,
@@ -59,6 +70,21 @@ export function buildThreads(comments: readonly RawComment[]): Thread[] {
     }
   }
 
+  for (const c of nativeReplies) {
+    const thread = threads.get(c.inReplyTo ?? '');
+    if (!thread) continue;
+    thread.replies.push({
+      id: c.id,
+      kind: c.kind,
+      author: c.author,
+      createdAt: c.createdAt,
+      htmlUrl: c.htmlUrl,
+      bodyHtml: c.bodyHtml,
+      text: c.body,
+      meta: { ...thread.root.meta, anchor: {}, parent: Number(thread.id) },
+    });
+  }
+
   for (const pin of pins) {
     if (pin.meta.parent === null) continue;
     const thread = threads.get(String(pin.meta.parent));
@@ -74,6 +100,13 @@ export function buildThreads(comments: readonly RawComment[]): Thread[] {
       continue;
     }
     thread.replies.push(pin);
+  }
+
+  // GitHub's resolved state is authoritative for review threads when known.
+  for (const thread of threads.values()) {
+    const resolved = resolvedOnGitHub.get(thread.id);
+    if (resolved !== undefined) thread.state = resolved ? 'resolved' : 'open';
+    thread.replies.sort(byCreated);
   }
 
   return [...threads.values()];

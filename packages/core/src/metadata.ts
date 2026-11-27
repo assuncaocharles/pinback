@@ -131,17 +131,23 @@ export interface FormatOptions {
   meta: PinMetadata;
   /** Absolute preview URL for the "view in preview" link, if known. */
   previewUrl?: string;
+  /**
+   * For review comments placed on a nearby line: where the element really is,
+   * e.g. "src/App.tsx:42".
+   */
+  elementAt?: string;
 }
 
 /**
  * Builds a full comment body: the reviewer's text, a short footer that reads
  * well on GitHub, then the hidden metadata block.
  */
-export function formatCommentBody({ text, meta, previewUrl }: FormatOptions): string {
+export function formatCommentBody({ text, meta, previewUrl, elementAt }: FormatOptions): string {
   const where = previewUrl ? `[\`${meta.url}\`](${previewUrl})` : `\`${meta.url}\``;
+  const at = elementAt ? ` · element at \`${elementAt}\`` : '';
   const footer =
     meta.parent === null
-      ? `<sub>📌 Pinned on ${where} at ${meta.sha.slice(0, 7)} · preview-pins</sub>`
+      ? `<sub>📌 Pinned on ${where} at ${meta.sha.slice(0, 7)}${at} · preview-pins</sub>`
       : meta.state === 'resolved'
         ? `<sub>✅ Resolved via preview-pins</sub>`
         : meta.state === 'open'

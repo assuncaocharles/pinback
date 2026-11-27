@@ -22,6 +22,8 @@ export interface CreateCommentParams {
   meta: PinMetadata;
   /** Absolute preview URL for the footer link. */
   previewUrl?: string;
+  /** For replies and state events: where the thread's root lives, so replies stay in a review thread. */
+  parentKind?: 'issue' | 'review';
 }
 
 /** Method name -> [params, result]. */

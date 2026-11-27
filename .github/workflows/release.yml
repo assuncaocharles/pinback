@@ -23,11 +23,18 @@ jobs:
           cache: pnpm
           registry-url: https://registry.npmjs.org
       - run: pnpm install --frozen-lockfile
+      # Publishing is opt-in: until an NPM_TOKEN secret exists, this workflow
+      # only opens/updates the "Version packages" PR and never tries npm.
+      - name: Check for npm credentials
+        id: npm
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: echo "enabled=$([ -n "$NPM_TOKEN" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
       - name: Version PR or publish
         uses: changesets/action@v1
         with:
           version: pnpm version-packages
-          publish: pnpm release
+          publish: ${{ steps.npm.outputs.enabled == 'true' && 'pnpm release' || '' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

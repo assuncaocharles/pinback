@@ -14,7 +14,7 @@ const adrs = readdirSync(adrDir)
 const repo = 'https://github.com/assuncaocharles/pinback';
 
 export default defineConfig({
-  title: 'pinback-widget',
+  title: 'pinback',
   description: 'Pin review comments to any element on a preview deployment. Comments land on the GitHub PR.',
   // Served from https://<owner>.github.io/<repo>/
   base: process.env.DOCS_BASE ?? '/pinback/',

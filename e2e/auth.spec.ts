@@ -184,4 +184,46 @@ test.describe('auth and writing (M2)', () => {
     const dialog = page.locator(widget).getByRole('dialog');
     await expect(dialog.getByRole('button', { name: 'Sign in with GitHub' })).toBeVisible();
   });
+
+  test('a pin on a component in the diff becomes a review comment on its line (M4)', async ({ page }) => {
+    await mockGitHub(page, []);
+    await page.goto(`/${CONTEXT_QUERY}`);
+
+    // The preview build tags host elements with their source location.
+    const src = await page.getByTestId('checkout-button').getAttribute('data-pp-src');
+    expect(src).toMatch(/^examples\/react-vite\/src\/App\.tsx:\d+:\d+$/);
+    const [path, lineStr] = src!.split(':') as [string, string];
+    const line = Number(lineStr);
+
+    const posts: { url: string; body: Record<string, unknown> }[] = [];
+    await page.context().route('https://api.github.com/repos/acme/web/pulls/12/files**', (route) =>
+      route.fulfill({
+        headers: CORS,
+        json: [{ filename: path, status: 'modified', patch: `@@ -${line},1 +${line},2 @@\n-old\n+<button>\n+</button>` }],
+      }),
+    );
+    await page.context().route('https://api.github.com/repos/acme/web/pulls/12/comments', async (route) => {
+      const req = route.request();
+      if (req.method() !== 'POST') return route.fallback();
+      const body = req.postDataJSON() as Record<string, unknown>;
+      posts.push({ url: req.url(), body });
+      await route.fulfill({
+        status: 201,
+        headers: CORS,
+        json: { ...pinComment('x', {}), id: 777, body: body.body, body_html: '<p>On the line</p>', html_url: 'https://github.com/acme/web/pull/12#discussion_r777', user: { login: 'octocat', avatar_url: '' } },
+      });
+    });
+
+    await signIn(page);
+    await page.keyboard.press('Escape');
+    const w = page.locator('preview-pins');
+    await w.getByRole('button', { name: 'Comment', exact: true }).click();
+    await page.getByTestId('checkout-button').click();
+    await w.getByRole('dialog', { name: 'New comment' }).getByRole('textbox', { name: 'Comment' }).fill('On the line');
+    await page.keyboard.press('Control+Enter');
+    await expect(w.locator('.pin')).toHaveCount(1);
+
+    expect(posts).toHaveLength(1);
+    expect(posts[0]!.body).toMatchObject({ path, line, side: 'RIGHT', commit_id: 'abc1234def5678abc1234def5678abc1234def56' });
+  });
 });

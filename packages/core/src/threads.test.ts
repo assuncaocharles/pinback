@@ -76,3 +76,23 @@ describe('paths', () => {
     expect(threadsForPath(threads, '/checkout/').map((t) => t.id)).toEqual(['1']);
   });
 });
+
+describe('review threads', () => {
+  it('attaches replies typed in GitHub to their review thread', () => {
+    const root = rawPin(1, 'On the diff', {}, { kind: 'review' });
+    const native: RawComment = { ...rawPin(2, 'x', {}, { login: 'bob', kind: 'review' }), body: 'Fixed in the next commit', inReplyTo: '1' };
+    const [t] = buildThreads([root, native]);
+    expect(t!.replies.map((r) => [r.id, r.text])).toEqual([['2', 'Fixed in the next commit']]);
+  });
+
+  it("lets GitHub's resolved state win for review threads", () => {
+    const root = { ...rawPin(1, 'On the diff', {}, { kind: 'review' }), threadResolved: true };
+    const reopen = rawPin(2, '', { parent: 1, state: 'open' }, { association: 'OWNER' });
+    expect(buildThreads([root, reopen])[0]!.state).toBe('resolved');
+    expect(buildThreads([{ ...root, threadResolved: false }])[0]!.state).toBe('open');
+  });
+
+  it('keeps the comment kind on pins', () => {
+    expect(buildThreads([rawPin(1, 'x', {}, { kind: 'review' })])[0]!.root.kind).toBe('review');
+  });
+});

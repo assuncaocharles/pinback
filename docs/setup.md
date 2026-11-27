@@ -22,6 +22,11 @@ the meta tag from CI variables:
 Only add the tags in preview builds. The widget does nothing useful in
 production.
 
+**Optional, recommended:** add `@preview-pins/source-plugin` to your Vite
+config and build previews with `PREVIEW_PINS=1`. Pins on components the PR
+changes then land as review comments on the right file and line. See
+[source-line-comments.md](source-line-comments.md).
+
 ## 2. Register a GitHub App
 
 GitHub → Settings → Developer settings → **GitHub Apps → New GitHub App**:

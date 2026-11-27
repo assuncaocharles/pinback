@@ -6,7 +6,7 @@ export function rawPin(
   id: number,
   text: string,
   meta: Partial<PinMetadata> = {},
-  opts: { login?: string; association?: AuthorAssociation; createdAt?: string } = {},
+  opts: { login?: string; association?: AuthorAssociation; createdAt?: string; kind?: RawComment['kind'] } = {},
 ): RawComment {
   const full: PinMetadata = {
     anchor: {},
@@ -24,6 +24,6 @@ export function rawPin(
     createdAt: opts.createdAt ?? new Date(Date.UTC(2026, 0, 1, 0, 0, id)).toISOString(),
     updatedAt: opts.createdAt ?? new Date(Date.UTC(2026, 0, 1, 0, 0, id)).toISOString(),
     htmlUrl: `https://github.com/acme/web/pull/1#issuecomment-${id}`,
-    kind: 'issue',
+    kind: opts.kind ?? 'issue',
   };
 }

@@ -1,6 +1,6 @@
 {
   "name": "@assuncaocharles/pinback",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Pin review comments to any element on a preview deployment. Comments land on the GitHub PR. One script tag.",
   "keywords": [
     "github",

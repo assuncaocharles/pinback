@@ -174,4 +174,15 @@ describe('<preview-pins>', () => {
     expect(pin.classList.contains('approx')).toBe(true);
     expect(pin.getAttribute('aria-label')).toContain('(approximate position)');
   });
+
+  it('fans out pins that would overlap', async () => {
+    const el = await mount([
+      rawPin(1, 'First', { url: '/', anchor: { testId: 'checkout' } }),
+      rawPin(2, 'Second', { url: '/', anchor: { testId: 'checkout' } }),
+    ]);
+    await new Promise((r) => requestAnimationFrame(r));
+    const [a, b] = pins(el).map((p) => p.style.transform);
+    expect(a).toBe('translate(207px, 187px)');
+    expect(b).toBe('translate(235px, 187px)');
+  });
 });

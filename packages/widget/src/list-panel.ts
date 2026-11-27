@@ -29,10 +29,10 @@ export function renderList(model: ListModel, cb: ListCallbacks): DocumentFragmen
     const btn = h(
       'button',
       { type: 'button', class: 'item' },
-      h('span', { class: 'num', 'aria-hidden': 'true' }, String(t.number)),
-      h('span', { class: 'text' }, h('span', { class: 'excerpt' }, excerpt(t)), h('span', { class: 'muted' }, `${t.root.author.login}${note ? ` · ${note}` : ''}`)),
+      h('span', { class: 'sr-only' }, 'Comment '),
+      h('span', { class: 'num' }, String(t.number)),
+      h('span', { class: 'text' }, h('span', { class: 'excerpt' }, excerpt(t)), ' ', h('span', { class: 'muted' }, `${t.root.author.login}${note ? ` · ${note}` : ''}`)),
     );
-    btn.setAttribute('aria-label', `Comment ${t.number}: ${excerpt(t)}`);
     btn.addEventListener('click', action);
     return h('li', {}, btn);
   };

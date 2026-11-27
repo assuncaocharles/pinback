@@ -22,7 +22,7 @@ async function recordHostMessages(page: Page) {
 
 async function signIn(page: Page) {
   const w = page.locator(widget);
-  await w.getByRole('button', { name: /Comments,/ }).click();
+  await w.getByRole('button', { name: /^Comments \d/ }).click();
   const [popup] = await Promise.all([
     page.waitForEvent('popup'),
     w.getByRole('button', { name: 'Sign in with GitHub' }).click(),

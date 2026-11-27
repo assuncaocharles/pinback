@@ -152,15 +152,21 @@ export class PinLayer {
       pin.target?.isConnected ? pinPosition(pin.target, pin.thread.root.meta.anchor.rect) : null,
     );
     const needsReanchor = pins.some((pin) => pin.target && !pin.target.isConnected);
-    // Write phase.
+    // Write phase. Pins that would land on top of an earlier one fan out to
+    // the right so every marker stays visible and clickable.
+    const placed: { x: number; y: number }[] = [];
     pins.forEach((pin, i) => {
       const pos = positions[i];
       if (!pos?.visible) {
         pin.button.hidden = true;
         return;
       }
+      let { x } = pos;
+      const { y } = pos;
+      while (placed.some((p) => Math.abs(p.x - x) < PIN_SIZE - 4 && Math.abs(p.y - y) < PIN_SIZE - 4)) x += PIN_SIZE + 2;
+      placed.push({ x, y });
       pin.button.hidden = false;
-      pin.button.style.transform = `translate(${Math.round(pos.x - PIN_SIZE / 2)}px, ${Math.round(pos.y - PIN_SIZE / 2)}px)`;
+      pin.button.style.transform = `translate(${Math.round(x - PIN_SIZE / 2)}px, ${Math.round(y - PIN_SIZE / 2)}px)`;
     });
     if (needsReanchor) this.#reanchor();
   };

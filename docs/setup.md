@@ -105,6 +105,25 @@ pnpm vite build && pnpm wrangler deploy \
 - Then set the `PP_AUTH_ORIGIN` repository variable (or the `auth=` meta tag
   field) to the worker URL so previews enable sign-in.
 
+### Optional: screenshots
+
+Reviewers can attach a screenshot of the pinned area. Images are stored in
+your R2 bucket and embedded in the comment. Read
+[ADR 11](adr/0011-screenshots.md) first: images are public by URL, so think
+twice for private repos.
+
+1. Cloudflare → **R2** → create a bucket, e.g. `preview-pins-screenshots`.
+   R2 needs a payment method on the account, even on the free tier.
+   Optionally add a lifecycle rule that deletes objects after 90 days.
+2. Add **Workers R2 Storage: Edit** to the Cloudflare API token.
+3. Set the repository variable `PP_SCREENSHOTS_BUCKET` to the bucket name
+   and run **Deploy auth worker**. Deploying locally instead: uncomment the
+   `[[r2_buckets]]` block in `packages/auth-worker/wrangler.toml`.
+
+The **Attach screenshot** checkbox then appears in the composer. Serve
+`preview-pins-capture.mjs` next to `preview-pins.js` (unpkg/jsdelivr do this
+automatically), or set `config.captureUrl`.
+
 ### Preview cleanup
 
 `.github/workflows/preview-cleanup.yml` deletes a PR's Pages deployments when

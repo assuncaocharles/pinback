@@ -1,25 +1,14 @@
 import { b64url, randomToken, seal, sha256b64url, timingSafeEqual, unseal, fromB64url } from './crypto.js';
 import { escapeHtml, page } from './html.js';
+import { SECURITY_HEADERS, isSameOrigin, json } from './http.js';
+import { SCREENSHOT_PATH_PREFIX, serveScreenshot, uploadScreenshot } from './screenshots.js';
+import { allowedRepos, type Env } from './env.js';
 import { parseAllowlist } from './origins.js';
 import type { CallbackData, FrameConfig, TokenSet } from './types.js';
 
 export type { CallbackData, FrameConfig, TokenSet } from './types.js';
+export type { Env } from './env.js';
 
-export interface Env {
-  /** Comma-separated origins allowed to embed the frame (exact, or https://*.example.dev). */
-  ALLOWED_ORIGINS: string;
-  /** Optional comma-separated owner/repo list the frame will act on. Empty = any. */
-  ALLOWED_REPOS?: string;
-  GITHUB_CLIENT_ID?: string;
-  /** Secret. */
-  GITHUB_CLIENT_SECRET?: string;
-  /** Secret. 32 random bytes, base64. Encrypts the sign-in handoff blob. */
-  SESSION_KEY?: string;
-  /** Test/GHES override for github.com OAuth endpoints. */
-  GITHUB_OAUTH_BASE?: string;
-  /** Test/GHES override for the REST API the frame calls. */
-  GITHUB_API_BASE?: string;
-}
 
 interface SealedPayload {
   tokens: TokenSet;
@@ -39,11 +28,6 @@ const COOKIE = '__Host-pp_oauth';
 const BLOB_TTL_MS = 10 * 60 * 1000;
 const CHALLENGE_RE = /^[A-Za-z0-9_-]{43}$/;
 
-const SECURITY_HEADERS = {
-  'X-Content-Type-Options': 'nosniff',
-  'Referrer-Policy': 'no-referrer',
-  'Cache-Control': 'no-store',
-};
 
 /**
  * Stateless auth worker. Routes:
@@ -53,6 +37,8 @@ const SECURITY_HEADERS = {
  *   GET  /auth/callback   exchanges the code, returns a sealed blob bound to the frame's challenge
  *   POST /auth/redeem     frame-only: sealed blob + frame secret -> tokens
  *   POST /auth/refresh    frame-only: refresh token -> new tokens
+ *   POST /screenshots     frame-only, needs a GitHub token with repo access: store a PNG/WebP/JPEG in R2
+ *   GET  /s/<key>         serve a stored screenshot (unguessable key)
  * Static assets (/frame.js, /callback.js) are served by Workers Assets.
  * See ADR 7.
  */
@@ -61,7 +47,12 @@ export default {
     const url = new URL(request.url);
     const isAllowed = parseAllowlist(env.ALLOWED_ORIGINS);
     try {
+      if (request.method === 'GET' && url.pathname.startsWith(SCREENSHOT_PATH_PREFIX)) {
+        return await serveScreenshot(env, url.pathname.slice(SCREENSHOT_PATH_PREFIX.length));
+      }
       switch (`${request.method} ${url.pathname}`) {
+        case 'POST /screenshots':
+          return await uploadScreenshot(request, env, url);
         case 'GET /health':
           return health(request, isAllowed);
         case 'GET /frame':
@@ -112,8 +103,9 @@ function frame(env: Env, url: URL): Response {
   const apiBase = (env.GITHUB_API_BASE ?? 'https://api.github.com').replace(/\/+$/, '');
   const config: FrameConfig = {
     allowedOrigins: env.ALLOWED_ORIGINS,
-    allowedRepos: (env.ALLOWED_REPOS ?? '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean),
+    allowedRepos: allowedRepos(env),
     apiBase,
+    screenshots: !!env.SCREENSHOTS,
   };
   const csp = [
     "default-src 'none'",
@@ -260,16 +252,6 @@ async function exchange(env: Env, params: Record<string, string>): Promise<Token
   return tokens;
 }
 
-/** /auth/redeem and /auth/refresh only answer same-origin requests (from the frame). */
-function isSameOrigin(request: Request, url: URL): boolean {
-  const site = request.headers.get('Sec-Fetch-Site');
-  if (site && site !== 'same-origin') return false;
-  return request.headers.get('Origin') === url.origin;
-}
-
-function json(data: unknown, status = 200): Response {
-  return new Response(JSON.stringify(data), { status, headers: { ...SECURITY_HEADERS, 'Content-Type': 'application/json' } });
-}
 
 async function readJson(request: Request): Promise<Record<string, unknown> | null> {
   try {

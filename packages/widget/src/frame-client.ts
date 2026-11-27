@@ -33,6 +33,8 @@ export interface AuthFrame {
   readonly origin: string;
   readonly iframe: HTMLElement;
   readonly viewer: Viewer | null;
+  /** Optional worker features, known once ready. */
+  readonly features: { screenshots: boolean };
   ready(): Promise<void>;
   signInUrl(returnUrl: string): string;
   call<M extends RpcMethod>(method: M, params: RpcMethods[M][0]): Promise<RpcMethods[M][1]>;
@@ -66,6 +68,7 @@ export class FrameClient implements AuthFrame {
   #pending = new Map<number, { resolve(v: unknown): void; reject(e: Error): void; timer: number }>();
   #viewer: Viewer | null = null;
   #challenge = '';
+  #features = { screenshots: false };
   readonly #events: FrameClientEvents;
 
   constructor(origin: string, events: FrameClientEvents) {
@@ -83,9 +86,14 @@ export class FrameClient implements AuthFrame {
         'load',
         () => {
           this.#rawCall('hello', {})
-            .then(({ viewer, challenge }) => {
+            .then(({ viewer, challenge, features }) => {
               this.#viewer = viewer;
               this.#challenge = challenge;
+              // Frames from older workers send no features: treat as all off.
+              const f: unknown = features;
+              this.#features = {
+                screenshots: typeof f === 'object' && f !== null && (f as { screenshots?: unknown }).screenshots === true,
+              };
               resolve();
             })
             .catch(reject);
@@ -104,6 +112,10 @@ export class FrameClient implements AuthFrame {
 
   get viewer(): Viewer | null {
     return this.#viewer;
+  }
+
+  get features(): { screenshots: boolean } {
+    return this.#features;
   }
 
   /** URL to open in the sign-in popup. */

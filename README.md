@@ -63,6 +63,12 @@ pnpm --filter @preview-pins/example-react-vite dev
 Add a changeset (`pnpm changeset`) to any PR that changes a published
 package.
 
+## Optional screenshots
+
+With an R2 bucket bound to the worker, reviewers can attach a screenshot of
+the pinned area to their comment. It's off by default. See
+[ADR 11](docs/adr/0011-screenshots.md) for the trade-offs.
+
 ## Accessibility
 
 axe runs in CI on every widget state (light and dark) and must report zero

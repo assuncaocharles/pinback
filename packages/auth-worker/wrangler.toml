@@ -19,3 +19,9 @@ GITHUB_CLIENT_ID = ""
 # Secrets, set with `wrangler secret put <NAME>`:
 #   GITHUB_CLIENT_SECRET  GitHub App client secret
 #   SESSION_KEY           32 random bytes, base64 (openssl rand -base64 32)
+
+# Optional: pin screenshots (ADR 11). Create an R2 bucket and uncomment, or set
+# the PP_SCREENSHOTS_BUCKET repository variable when deploying from CI.
+# [[r2_buckets]]
+# binding = "SCREENSHOTS"
+# bucket_name = "preview-pins-screenshots"

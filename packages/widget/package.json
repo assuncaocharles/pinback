@@ -9,7 +9,8 @@
       "types": "./src/index.ts",
       "default": "./src/index.ts"
     },
-    "./preview-pins.js": "./dist/preview-pins.js"
+    "./preview-pins.js": "./dist/preview-pins.js",
+    "./preview-pins-capture.mjs": "./dist/preview-pins-capture.mjs"
   },
   "publishConfig": {
     "exports": {
@@ -17,18 +18,20 @@
         "types": "./dist/types/index.d.ts",
         "default": "./dist/preview-pins.mjs"
       },
-      "./preview-pins.js": "./dist/preview-pins.js"
+      "./preview-pins.js": "./dist/preview-pins.js",
+      "./preview-pins-capture.mjs": "./dist/preview-pins-capture.mjs"
     }
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "vite build && tsc -p tsconfig.build.json",
+    "build": "vite build && vite build -c vite.capture.config.ts && tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@preview-pins/core": "workspace:*"
+    "@preview-pins/core": "workspace:*",
+    "modern-screenshot": "4.7.0"
   },
   "devDependencies": {
     "vite": "^8.4.0"

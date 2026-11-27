@@ -16,6 +16,7 @@ import {
   type Viewer,
 } from '@preview-pins/core';
 import { h } from './dom.js';
+import { loadCapture } from './capture-loader.js';
 import { FrameBackend, FrameError, createAuthFrame, type AuthFrame } from './frame-client.js';
 import { PinLayer } from './layer.js';
 import { renderList } from './list-panel.js';
@@ -37,6 +38,8 @@ export interface PreviewPinsConfig {
   authOrigin?: string;
   /** How often to re-check for new comments while the tab is visible. Default 60 s. */
   pollIntervalMs?: number;
+  /** URL of preview-pins-capture.mjs. Defaults to next to the widget script. */
+  captureUrl?: string;
 }
 
 type Status =
@@ -73,6 +76,7 @@ export class PreviewPinsElement extends HTMLElement {
   #abort: AbortController | null = null;
   #pendingBlob: string | null = null;
   #pendingMeta: PinMetadata | null = null;
+  #pendingTarget: Element | null = null;
 
   readonly #root: ShadowRoot;
   readonly #toggle: HTMLButtonElement;
@@ -286,6 +290,7 @@ export class PreviewPinsElement extends HTMLElement {
       .ready()
       .then(async () => {
         if (this.#frame !== frame) return;
+        this.#newDialog.setScreenshotsAvailable(frame.features.screenshots);
         this.#setViewer(frame.viewer);
         if (this.#pendingBlob) {
           const blob = this.#pendingBlob;
@@ -360,13 +365,20 @@ export class PreviewPinsElement extends HTMLElement {
     this.#setComments(this.#comments.filter((c) => !this.#local.has(c.id)));
   }
 
-  async #post(text: string, meta: PinMetadata, parentKind?: RawComment['kind']): Promise<RawComment> {
+  async #post(text: string, meta: PinMetadata, parentKind?: RawComment['kind'], screenshotUrl?: string): Promise<RawComment> {
     const frame = this.#frame;
     const ctx = this.#context;
     if (!frame || !ctx) throw new Error('Commenting is not configured for this preview.');
     try {
       const previewUrl = `${window.location.origin}${window.location.pathname}${window.location.search}`;
-      const created = await frame.call('createComment', { ctx, text, meta, previewUrl, ...(parentKind ? { parentKind } : {}) });
+      const created = await frame.call('createComment', {
+        ctx,
+        text,
+        meta,
+        previewUrl,
+        ...(parentKind ? { parentKind } : {}),
+        ...(screenshotUrl ? { screenshotUrl } : {}),
+      });
       this.#addComment(created);
       return created;
     } catch (err) {
@@ -389,17 +401,37 @@ export class PreviewPinsElement extends HTMLElement {
     const meta = this.#baseMeta(window.location.pathname, null);
     meta.anchor = describeElement(el, point);
     this.#pendingMeta = meta;
+    this.#pendingTarget = el;
     this.commentMode = false;
     this.#newDialog.open(describeTarget(el), this.#toggle, () => {
       this.#pendingMeta = null;
+      this.#pendingTarget = null;
     });
   }
 
   async #createPin(text: string): Promise<void> {
     const meta = this.#pendingMeta;
     if (!meta) return;
-    await this.#post(text, meta);
+    const screenshotUrl = this.#newDialog.attachScreenshot ? await this.#screenshot() : undefined;
+    await this.#post(text, meta, undefined, screenshotUrl);
     this.#announce('Comment posted');
+  }
+
+  /** Captures the area around the picked element and stores it via the frame (ADR 11). */
+  async #screenshot(): Promise<string> {
+    const target = this.#pendingTarget;
+    const frame = this.#frame;
+    const ctx = this.#context;
+    if (!target?.isConnected || !frame || !ctx) throw new Error('The pinned element is no longer on the page.');
+    try {
+      const capture = await loadCapture(this.#config.captureUrl);
+      const blob = await capture.captureAround(target, { exclude: this });
+      const { url } = await frame.call('uploadScreenshot', { ctx, data: await blob.arrayBuffer(), type: blob.type });
+      return url;
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : 'unknown error';
+      throw new Error(`Screenshot failed (${reason}). Untick "Attach screenshot" to post without it.`, { cause: err });
+    }
   }
 
   async #reply(thread: Thread, text: string): Promise<void> {

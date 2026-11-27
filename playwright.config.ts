@@ -21,7 +21,7 @@ export default defineConfig({
   // (`pnpm build:example:e2e`), and the worker with `pnpm build`.
   webServer: [
     {
-      command: 'pnpm --filter @preview-pins/example-react-vite preview',
+      command: 'pnpm --filter @assuncaocharles/pinback-example preview',
       url: 'http://localhost:4173',
       reuseExistingServer: !process.env.CI,
     },

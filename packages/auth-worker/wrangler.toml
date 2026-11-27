@@ -24,4 +24,4 @@ GITHUB_CLIENT_ID = ""
 # the PP_SCREENSHOTS_BUCKET repository variable when deploying from CI.
 # [[r2_buckets]]
 # binding = "SCREENSHOTS"
-# bucket_name = "preview-pins-screenshots"
+# bucket_name = "pinback-screenshots"

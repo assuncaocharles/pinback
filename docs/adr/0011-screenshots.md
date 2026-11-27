@@ -17,7 +17,7 @@ part of a page.
   only then does the composer show **Attach screenshot**, which is off by
   default.
 - **Capture in the browser** with `modern-screenshot` (MIT, no dependencies),
-  in a separate lazy module (`preview-pins-capture.mjs`, about 10 kB gz with
+  in a separate lazy module (`pinback-capture.mjs`, about 10 kB gz with
   its own size budget). It loads from next to the widget script only when a
   reviewer actually attaches a screenshot. It renders the DOM to a canvas,
   leaves out the widget itself, and crops the element plus 48 px of padding

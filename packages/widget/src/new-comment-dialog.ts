@@ -1,4 +1,4 @@
-import type { Viewer } from '@preview-pins/core';
+import type { Viewer } from '@assuncaocharles/pinback-core';
 import { Composer, type ComposerCallbacks } from './composer.js';
 import { h } from './dom.js';
 

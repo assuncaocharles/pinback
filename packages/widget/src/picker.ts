@@ -1,4 +1,4 @@
-import { normaliseText } from '@preview-pins/core';
+import { normaliseText } from '@assuncaocharles/pinback-core';
 import { h } from './dom.js';
 
 export interface PickerCallbacks {
@@ -57,7 +57,7 @@ export class Picker {
     window.addEventListener('scroll', this.#schedule, { capture: true, passive: true });
     window.addEventListener('resize', this.#schedule, { passive: true });
     this.#cursorStyle = document.createElement('style');
-    this.#cursorStyle.setAttribute('data-preview-pins', '');
+    this.#cursorStyle.setAttribute('data-pinback', '');
     this.#cursorStyle.textContent = '*{cursor:crosshair!important}';
     document.head.append(this.#cursorStyle);
     this.#cb.announce('Comment mode on. Click an element, or use arrow keys to choose one and press Enter. Escape cancels.');

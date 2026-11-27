@@ -1,10 +1,10 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { decodeMetadata, type Backend, type RawComment, type RpcMethod, type RpcMethods, type Viewer } from '@preview-pins/core';
-import { rawPin } from '@preview-pins/core/testing';
+import { decodeMetadata, type Backend, type RawComment, type RpcMethod, type RpcMethods, type Viewer } from '@assuncaocharles/pinback-core';
+import { rawPin } from '@assuncaocharles/pinback-core/testing';
 import { setCaptureLoader } from './capture-loader.js';
 import { setAuthFrameFactory, type AuthFrame, type FrameClientEvents } from './frame-client.js';
-import { PreviewPinsElement, TAG_NAME } from './index.js';
+import { PinbackElement, TAG_NAME } from './index.js';
 
 const SHA = 'abc1234def5678abc1234def5678abc1234def56';
 const CTX = { owner: 'acme', repo: 'web', prNumber: 5, commitSha: SHA };
@@ -57,7 +57,7 @@ async function mount(opts: { viewer?: Viewer | null; comments?: RawComment[]; sc
     return frame;
   });
   const el = document.createElement(TAG_NAME);
-  if (!(el instanceof PreviewPinsElement)) throw new Error('not upgraded');
+  if (!(el instanceof PinbackElement)) throw new Error('not upgraded');
   const backend: Backend = { kind: 'fake', listComments: () => Promise.resolve(opts.comments ?? []) };
   el.backend = backend;
   el.config = { ...CTX, authOrigin: AUTH };
@@ -66,9 +66,9 @@ async function mount(opts: { viewer?: Viewer | null; comments?: RawComment[]; sc
   return el;
 }
 
-const sr = (el: PreviewPinsElement) => el.shadowRoot!;
-const btn = (el: PreviewPinsElement, sel: string) => sr(el).querySelector<HTMLButtonElement>(sel)!;
-const newDialog = (el: PreviewPinsElement) => sr(el).querySelector<HTMLDialogElement>('dialog.composer-dialog')!;
+const sr = (el: PinbackElement) => el.shadowRoot!;
+const btn = (el: PinbackElement, sel: string) => sr(el).querySelector<HTMLButtonElement>(sel)!;
+const newDialog = (el: PinbackElement) => sr(el).querySelector<HTMLDialogElement>('dialog.composer-dialog')!;
 
 describe('writing (M2)', () => {
   beforeEach(() => {
@@ -283,7 +283,7 @@ describe('screenshots (ADR 11)', () => {
     setCaptureLoader(null);
   });
 
-  function pickAndType(el: PreviewPinsElement) {
+  function pickAndType(el: PinbackElement) {
     el.commentMode = true;
     document.querySelector('button')!.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
     const dialog = newDialog(el);

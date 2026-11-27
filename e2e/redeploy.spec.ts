@@ -48,7 +48,7 @@ test('pins recorded on an older build land on the right elements', async ({ page
   ]);
 
   await page.goto(`/${CONTEXT_QUERY}`);
-  const w = page.locator('preview-pins');
+  const w = page.locator('pinback-widget');
 
   const mugPin = w.getByRole('button', { name: /^Comment 1 by/ });
   const ctaPin = w.getByRole('button', { name: /^Comment 2 by/ });

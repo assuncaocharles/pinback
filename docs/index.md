@@ -2,7 +2,7 @@
 layout: home
 
 hero:
-  name: preview-pins
+  name: pinback
   text: Review comments, pinned to the page.
   tagline: Click any element on a preview deployment, leave a comment, and it lands on the GitHub pull request. GitHub is the only database.
   image:

@@ -5,7 +5,7 @@ import { fromMeta, fromQuery, resolveAuthOrigin, resolvePRContext, resolvePRCont
 const SHA = 'abc1234def5678abc1234def5678abc1234def56';
 
 function setMeta(content: string) {
-  document.head.innerHTML = `<meta name="preview-pins" content="${content}">`;
+  document.head.innerHTML = `<meta name="pinback" content="${content}">`;
 }
 
 describe('fromMeta', () => {

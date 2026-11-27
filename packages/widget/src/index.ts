@@ -1,10 +1,10 @@
 import { setAssetBase } from './capture-loader.js';
-import { PreviewPinsElement, TAG_NAME } from './element.js';
+import { PinbackElement, TAG_NAME } from './element.js';
 
-export { PreviewPinsElement, TAG_NAME, type PreviewPinsConfig } from './element.js';
+export { PinbackElement, TAG_NAME, type PinbackConfig } from './element.js';
 
 export function define(): void {
-  if (!customElements.get(TAG_NAME)) customElements.define(TAG_NAME, PreviewPinsElement);
+  if (!customElements.get(TAG_NAME)) customElements.define(TAG_NAME, PinbackElement);
 }
 
 /**

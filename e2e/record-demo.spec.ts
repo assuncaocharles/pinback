@@ -43,7 +43,7 @@ test('demo', async ({ page, context }) => {
   });
 
   await page.goto(`/${CONTEXT_QUERY}`);
-  const w = page.locator('preview-pins');
+  const w = page.locator('pinback-widget');
   // Sign in first; the recording is trimmed to start after this.
   await w.getByRole('button', { name: /^Comments \d/ }).click();
   const [popup] = await Promise.all([page.waitForEvent('popup'), w.getByRole('button', { name: 'Sign in with GitHub' }).click()]);

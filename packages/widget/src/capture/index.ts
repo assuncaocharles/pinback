@@ -2,7 +2,7 @@ import { domToCanvas } from 'modern-screenshot';
 
 /**
  * Lazy-loaded capture module (ADR 11): renders the page around a pinned
- * element to an image. Built as its own file (preview-pins-capture.mjs) so the
+ * element to an image. Built as its own file (pinback-capture.mjs) so the
  * main widget never pays for it unless a reviewer attaches a screenshot.
  */
 

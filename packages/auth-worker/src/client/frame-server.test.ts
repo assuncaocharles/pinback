@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, expect, it, vi } from 'vitest';
-import { decodeMetadata, type PinMetadata, type RpcEvent, type RpcResponse } from '@preview-pins/core';
+import { decodeMetadata, type PinMetadata, type RpcEvent, type RpcResponse } from '@assuncaocharles/pinback-core';
 import { sha256b64url } from '../crypto.js';
 import { FrameServer, type FrameDeps } from './frame-server.js';
 
@@ -175,7 +175,7 @@ describe('FrameServer state events', () => {
     });
     await send('hello');
     const ok = await send('createComment', { ctx, text: '', meta: { ...meta, parent: 1, state: 'resolved' } });
-    expect(result<{ body: string }>(ok).body).toContain('✅ Resolved via preview-pins');
+    expect(result<{ body: string }>(ok).body).toContain('✅ Resolved via pinback');
     const bad = await send('createComment', { ctx, text: '  ', meta: { ...meta, parent: 1 } });
     expect(bad.msg).toMatchObject({ ok: false, error: { code: 'invalid' } });
   });

@@ -7,7 +7,7 @@ automatically, the keyboard model, and the manual screen-reader pass.
 
 `e2e/a11y.spec.ts` runs axe (`@axe-core/playwright`, tags `wcag2a`,
 `wcag2aa`, `wcag21a`, `wcag21aa`, `wcag22aa`, `best-practice`) scoped to
-`<preview-pins>`. axe reaches into the shadow root. It checks every widget
+`<pinback-widget>`. axe reaches into the shadow root. It checks every widget
 state in **light and dark** color schemes:
 
 - toolbar with pins (including an approximate pin);

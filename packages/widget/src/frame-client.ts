@@ -10,7 +10,7 @@ import {
   type RpcMethod,
   type RpcMethods,
   type Viewer,
-} from '@preview-pins/core';
+} from '@assuncaocharles/pinback-core';
 
 export class FrameError extends Error {
   constructor(
@@ -76,7 +76,7 @@ export class FrameClient implements AuthFrame {
     this.#events = events;
     this.iframe = document.createElement('iframe');
     this.iframe.src = `${origin}/frame`;
-    this.iframe.title = 'preview-pins sign-in';
+    this.iframe.title = 'pinback sign-in';
     this.iframe.setAttribute('aria-hidden', 'true');
     this.iframe.tabIndex = -1;
     this.iframe.className = 'auth-frame';

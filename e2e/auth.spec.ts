@@ -49,7 +49,9 @@ test.describe('auth and writing (M2)', () => {
 
   test.beforeEach(async ({ page, context }) => {
     context.on('request', (r) => {
-      if (/github\.com|localhost:8787/.test(r.url())) trace.push(`REQ ${r.method()} ${r.url()} from=${r.frame().url()}`);
+      if (!/github\.com|localhost:8787/.test(r.url())) return;
+      const from = r.isNavigationRequest() ? '(navigation)' : r.frame().url();
+      trace.push(`REQ ${r.method()} ${r.url()} from=${from}`);
     });
     context.on('response', (r) => {
       if (/github\.com|localhost:8787/.test(r.url())) trace.push(`RES ${r.status()} ${r.request().method()} ${r.url()} fromServiceWorker=${r.fromServiceWorker()}`);

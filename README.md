@@ -7,7 +7,10 @@ Reviewers click an element on a preview URL and leave a comment. The comment
 is posted to the pull request. GitHub is the only database. The only server
 piece is a small, stateless auth worker.
 
-**Status:** M2 (auth and writing). Reviewers sign in with GitHub, pin
+**Status:** M3 (robust anchoring). Pins are matched by confidence scoring
+across all stored selectors and survive class renames, reordering, wrappers
+and text tweaks; when an element is really gone the pin goes outdated
+([ADR 9](docs/adr/0009-anchor-scoring.md)). Since M2: Reviewers sign in with GitHub, pin
 comments to elements, reply, and resolve threads. The GitHub token lives
 only in an isolated auth frame and is never readable by the preview page
 ([ADR 7](docs/adr/0007-token-isolation.md)).

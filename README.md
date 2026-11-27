@@ -3,6 +3,8 @@
 > Working name. Pin review comments to any element on a preview deployment.
 > The comments land on the GitHub PR.
 
+![A reviewer picks the checkout button on a preview, posts a comment, and a numbered pin appears on it](docs/public/demo.gif)
+
 Reviewers click an element on a preview URL and leave a comment. The comment
 is posted to the pull request. GitHub is the only database. The only server
 piece is a small, stateless auth worker.
@@ -17,7 +19,8 @@ comments to elements, reply, and resolve threads. The GitHub token lives
 only in an isolated auth frame and is never readable by the preview page
 ([ADR 7](docs/adr/0007-token-isolation.md)).
 
-**Get started:** [docs/setup.md](docs/setup.md).
+**Get started:** [docs/setup.md](docs/setup.md), or read the docs site at
+<https://assuncaocharles.github.io/pinback/>.
 
 The comment storage format is specified in
 [docs/metadata-format.md](docs/metadata-format.md).

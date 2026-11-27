@@ -3,7 +3,7 @@ import tseslint from 'typescript-eslint';
 import globals from 'globals';
 
 export default tseslint.config(
-  { ignores: ['**/dist/**', '**/.wrangler/**', '**/node_modules/**', 'playwright-report/**', 'test-results/**'] },
+  { ignores: ['docs/.vitepress/cache/**', '**/dist/**', '**/.wrangler/**', '**/node_modules/**', 'playwright-report/**', 'test-results/**'] },
   js.configs.recommended,
   ...tseslint.configs.strictTypeChecked,
   {
@@ -25,7 +25,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['**/*.js', '**/*.mjs', '**/*.config.ts'],
+    files: ['**/*.js', '**/*.mjs', '**/*.config.ts', 'docs/.vitepress/**/*.ts'],
     ...tseslint.configs.disableTypeChecked,
   },
 );

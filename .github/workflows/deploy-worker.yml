@@ -60,12 +60,17 @@ jobs:
         if: steps.cfg.outputs.enabled == 'true'
         working-directory: packages/auth-worker
         run: |
+          set -o pipefail
           pnpm exec vite build
           pnpm exec wrangler deploy \
             --var "GITHUB_CLIENT_ID:$PP_GITHUB_CLIENT_ID" \
             --var "ALLOWED_ORIGINS:$PP_ALLOWED_ORIGINS" \
             --var "ALLOWED_REPOS:$PP_ALLOWED_REPOS" | tee deploy.log
           url=$(grep -oE 'https://[a-z0-9.-]+\.workers\.dev' deploy.log | head -1)
+          if [ -z "$url" ]; then
+            echo "::error::Deploy finished without a workers.dev URL. Register a workers.dev subdomain (Cloudflare → Workers & Pages) or add a route."
+            exit 1
+          fi
           echo "url=$url" >> "$GITHUB_OUTPUT"
       - name: Sync secrets
         if: steps.cfg.outputs.enabled == 'true'

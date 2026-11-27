@@ -16,11 +16,13 @@ const require = createRequire(import.meta.url);
 function previewPinsDemo(): Plugin {
   const widgetPath = require.resolve('@preview-pins/widget/preview-pins.js');
   const [owner, repo] = (process.env.GITHUB_REPOSITORY ?? '').split('/');
+  const pr = process.env.PREVIEW_PINS_PR;
+  const sha = process.env.PREVIEW_PINS_SHA;
+  // PR fields only as a complete set: GitHub Actions always sets
+  // GITHUB_REPOSITORY, and a half context would override query params.
+  const complete = owner && repo && pr && sha;
   const fields: Record<string, string | undefined> = {
-    owner: owner || undefined,
-    repo: repo || undefined,
-    pr: process.env.PREVIEW_PINS_PR,
-    sha: process.env.PREVIEW_PINS_SHA,
+    ...(complete ? { owner, repo, pr, sha } : {}),
     // The auth worker origin enables sign-in and writing.
     auth: process.env.PREVIEW_PINS_AUTH_ORIGIN,
   };

@@ -1,4 +1,4 @@
-import type { Page, Route } from '@playwright/test';
+import type { BrowserContext, Page, Route } from '@playwright/test';
 import { formatCommentBody, type PinMetadata } from '../packages/core/src/index.js';
 
 export const SHA = 'abc1234def5678abc1234def5678abc1234def56';
@@ -19,6 +19,15 @@ export function pinComment(text: string, meta: Partial<PinMetadata>, login = 'al
     author_association: association,
     user: { login, avatar_url: 'https://avatars.githubusercontent.com/u/1?v=4' },
   };
+}
+
+/**
+ * Aborts any GitHub API request no other route answers, so tests behave the
+ * same offline and in CI (where unmocked calls would reach the real API).
+ * Register it before every other route: later routes take precedence.
+ */
+export async function blockUnmockedGitHub(context: BrowserContext): Promise<void> {
+  await context.route('https://api.github.com/**', (route) => route.abort('blockedbyclient'));
 }
 
 export interface ApiMock {
@@ -43,6 +52,11 @@ export async function mockGitHub(page: Page, comments: unknown[]): Promise<ApiMo
   const etag = '"fixture-v1"';
   await page.context().route('https://api.github.com/**', async (route: Route) => {
     const req = route.request();
+    // GET /repos/{o}/{r}: no push access unless a test says otherwise.
+    if (req.method() === 'GET' && /\/repos\/[^/]+\/[^/?]+$/.test(new URL(req.url()).pathname)) {
+      await route.fulfill({ headers: CORS, json: { permissions: { push: false } } });
+      return;
+    }
     // Only the comment list endpoints; let other routes (or tests) handle the rest.
     if (req.method() !== 'OPTIONS' && (req.method() !== 'GET' || !/\/(issues|pulls)\/\d+\/comments/.test(req.url()))) {
       await route.fallback();

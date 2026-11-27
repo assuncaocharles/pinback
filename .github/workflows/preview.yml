@@ -42,7 +42,7 @@ jobs:
           PREVIEW_PINS_PR: ${{ github.event.pull_request.number }}
           PREVIEW_PINS_SHA: ${{ github.event.pull_request.head.sha }}
           # Optional: enables sign-in and writing once the auth worker is deployed (docs/setup.md).
-          PREVIEW_PINS_AUTH_ORIGIN: ${{ vars.PP_AUTH_ORIGIN }}
+          PREVIEW_PINS_AUTH_ORIGIN: ${{ vars.PP_AUTH_ORIGIN || secrets.PP_AUTH_ORIGIN }}
       - name: Deploy to Cloudflare Pages
         id: deploy
         working-directory: examples/react-vite

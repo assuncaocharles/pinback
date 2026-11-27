@@ -69,19 +69,26 @@ pnpm vite build && pnpm wrangler deploy \
 Check that it's up: `curl https://preview-pins-auth.YOU.workers.dev/health`
 should return `ok`.
 
-### Deploying from CI instead
+### Deploying from CI instead (no local machine needed)
 
 `.github/workflows/deploy-worker.yml` deploys the worker on demand
 (Actions → Deploy auth worker → Run workflow) and on pushes to `main` that
-touch it. It needs:
+touch it. Everything is set in the repo's GitHub settings:
 
-- secrets `CLOUDFLARE_API_TOKEN` (with **Workers Scripts: Edit**) and
-  `CLOUDFLARE_ACCOUNT_ID`;
-- variables `PP_GITHUB_CLIENT_ID`, `PP_ALLOWED_ORIGINS` and, optionally,
-  `PP_ALLOWED_REPOS`.
+| Kind | Name | Notes |
+| --- | --- | --- |
+| Secret | `CLOUDFLARE_API_TOKEN` | Needs **Workers Scripts: Edit** and **Account Settings: Read** (on top of Pages: Edit for previews) |
+| Secret | `CLOUDFLARE_ACCOUNT_ID` | |
+| Secret | `PP_GITHUB_CLIENT_SECRET` | From the GitHub App. Optional for the first deploy |
+| Secret | `PP_SESSION_KEY` | Optional. If unset, a fresh key is generated per deploy (safe: it only cancels sign-ins in progress) |
+| Variable | `PP_GITHUB_CLIENT_ID` | From the GitHub App. Optional for the first deploy |
+| Variable | `PP_ALLOWED_ORIGINS` | Default `https://*.<CF_PAGES_PROJECT>.pages.dev` |
+| Variable | `PP_ALLOWED_REPOS` | Default: this repository |
 
-Set `GITHUB_CLIENT_SECRET` and `SESSION_KEY` once with `wrangler secret put`
-as shown above. The workflow doesn't touch them.
+The run summary prints the worker URL and the GitHub App callback URL. A
+good order is: deploy once to get the URL, create the GitHub App with that
+callback, add `PP_GITHUB_CLIENT_ID` and `PP_GITHUB_CLIENT_SECRET`, then run
+the workflow again.
 
 ## 4. Try it
 

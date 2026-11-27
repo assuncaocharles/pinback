@@ -80,10 +80,17 @@ importers:
         version: 4.168.0(@cloudflare/workers-types@5.20261127.1)(@types/node@22.20.7)(vitest@5.1.2(@types/node@22.20.7)(happy-dom@21.0.4)(vite@8.4.0(@types/node@22.20.7)(esbuild@0.28.2)(yaml@2.9.1)))
 
   packages/auth-worker:
+    dependencies:
+      '@preview-pins/core':
+        specifier: workspace:*
+        version: link:../core
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^5.20261127.1
         version: 5.20261127.1
+      vite:
+        specifier: ^8.4.0
+        version: 8.4.0(@types/node@22.20.7)(esbuild@0.28.2)(yaml@2.9.1)
       wrangler:
         specifier: ^4.168.0
         version: 4.168.0(@cloudflare/workers-types@5.20261127.1)(@types/node@22.20.7)(vitest@5.1.2(@types/node@22.20.7)(happy-dom@21.0.4)(vite@8.4.0(@types/node@22.20.7)(esbuild@0.28.2)(yaml@2.9.1)))

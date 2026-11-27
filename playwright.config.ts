@@ -17,9 +17,18 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'], ...(executablePath ? { launchOptions: { executablePath } } : {}) },
     },
   ],
-  webServer: {
-    command: 'pnpm --filter @preview-pins/example-react-vite preview',
-    url: 'http://localhost:4173',
-    reuseExistingServer: !process.env.CI,
-  },
+  // The example must be built with PREVIEW_PINS_AUTH_ORIGIN=http://localhost:8787
+  // (`pnpm build:example:e2e`), and the worker with `pnpm build`.
+  webServer: [
+    {
+      command: 'pnpm --filter @preview-pins/example-react-vite preview',
+      url: 'http://localhost:4173',
+      reuseExistingServer: !process.env.CI,
+    },
+    {
+      command: 'node e2e/support/worker-server.mjs',
+      url: 'http://localhost:8787/health',
+      reuseExistingServer: !process.env.CI,
+    },
+  ],
 });

@@ -31,6 +31,11 @@ export async function mockGitHub(page: Page, comments: unknown[]): Promise<ApiMo
   const etag = '"fixture-v1"';
   await page.route('https://api.github.com/**', async (route: Route) => {
     const req = route.request();
+    // Only the comment list endpoints; let other routes (or tests) handle the rest.
+    if (req.method() !== 'OPTIONS' && (req.method() !== 'GET' || !/\/(issues|pulls)\/\d+\/comments/.test(req.url()))) {
+      await route.fallback();
+      return;
+    }
     const ifNoneMatch = req.headers()['if-none-match'];
     mock.requests.push({ url: req.url(), ifNoneMatch });
     const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Expose-Headers': 'ETag, Link' };

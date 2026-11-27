@@ -19,7 +19,11 @@
     "changeset": "changeset",
     "version-packages": "changeset version",
     "release": "pnpm build && changeset publish",
-    "build:example:e2e": "PREVIEW_PINS=1 PREVIEW_PINS_AUTH_ORIGIN=http://localhost:8787 pnpm --filter @preview-pins/example-react-vite build"
+    "build:example:e2e": "PREVIEW_PINS=1 PREVIEW_PINS_AUTH_ORIGIN=http://localhost:8787 pnpm --filter @preview-pins/example-react-vite build",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs",
+    "demo:record": "RECORD_DEMO=1 playwright test record-demo && ffmpeg -loglevel error -y -f concat -safe 0 -i test-results/demo/frames.txt -vf \"fps=12,scale=800:-1:flags=lanczos,split[s0][s1];[s0]palettegen=stats_mode=diff[p];[s1][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle\" -loop 0 docs/public/demo.gif"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.1",
@@ -34,6 +38,7 @@
     "size-limit": "^14.3.0",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.74.0",
+    "vitepress": "1.6.4",
     "vitest": "^5.1.2"
   }
 }

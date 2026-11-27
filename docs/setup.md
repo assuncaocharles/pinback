@@ -52,6 +52,38 @@ After creating it:
 
 ## 3. Deploy the auth worker
 
+The worker is stateless and runs on Cloudflare's free tier. Pick one option.
+
+### Option A: one click from GitHub Actions (recommended)
+
+No local setup needed: everything is done in GitHub and Cloudflare settings.
+
+1. In Cloudflare, create an API token with **Workers Scripts: Edit** and
+   **Account Settings: Read** (add **Cloudflare Pages: Edit** if it also
+   deploys your previews). Make sure your account has a **workers.dev
+   subdomain** (Workers & Pages → overview → Subdomain).
+2. In the repo, under **Settings → Secrets and variables → Actions**, add:
+
+   | Kind | Name | Notes |
+   | --- | --- | --- |
+   | Secret | `CLOUDFLARE_API_TOKEN` | From step 1 |
+   | Secret | `CLOUDFLARE_ACCOUNT_ID` | Shown on the Workers & Pages overview |
+   | Secret | `PP_GITHUB_CLIENT_SECRET` | From the GitHub App (step 2). Optional for the first run |
+   | Variable or secret | `PP_GITHUB_CLIENT_ID` | From the GitHub App. Optional for the first run |
+   | Variable | `PP_ALLOWED_ORIGINS` | Default `https://*.<CF_PAGES_PROJECT>.pages.dev` |
+   | Variable | `PP_ALLOWED_REPOS` | Default: this repository |
+   | Secret | `PP_SESSION_KEY` | Optional. If unset, a fresh key is generated per deploy (safe: it only cancels sign-ins in progress) |
+
+3. **Actions → Deploy auth worker → Run workflow.** The run summary prints the
+   worker URL and the exact **GitHub App callback URL**.
+
+A good order for a fresh setup: run it once to get the URL, create the
+GitHub App with that callback, add the client ID and secret, then run it
+again. After that, pushes to `main` that touch the worker redeploy it
+automatically.
+
+### Option B: from your machine
+
 ```sh
 cd packages/auth-worker
 pnpm wrangler login
@@ -63,37 +95,15 @@ pnpm vite build && pnpm wrangler deploy \
   --var ALLOWED_REPOS:your-org/your-repo
 ```
 
+### Either way
+
 - `ALLOWED_ORIGINS` lists the preview origins allowed to embed the frame and
   sign in. Use exact origins or one leading wildcard label. Nothing else is
   accepted.
-- `ALLOWED_REPOS` (optional, recommended) lists the repos the worker will
-  act on.
-- The worker stores nothing. Rotating `SESSION_KEY` only cancels sign-ins
-  that are in progress.
-
-Check that it's up: `curl https://preview-pins-auth.YOU.workers.dev/health`
-should return `ok`.
-
-### Deploying from CI instead (no local machine needed)
-
-`.github/workflows/deploy-worker.yml` deploys the worker on demand
-(Actions → Deploy auth worker → Run workflow) and on pushes to `main` that
-touch it. Everything is set in the repo's GitHub settings:
-
-| Kind | Name | Notes |
-| --- | --- | --- |
-| Secret | `CLOUDFLARE_API_TOKEN` | Needs **Workers Scripts: Edit** and **Account Settings: Read** (on top of Pages: Edit for previews) |
-| Secret | `CLOUDFLARE_ACCOUNT_ID` | |
-| Secret | `PP_GITHUB_CLIENT_SECRET` | From the GitHub App. Optional for the first deploy |
-| Secret | `PP_SESSION_KEY` | Optional. If unset, a fresh key is generated per deploy (safe: it only cancels sign-ins in progress) |
-| Variable | `PP_GITHUB_CLIENT_ID` | From the GitHub App. Optional for the first deploy |
-| Variable | `PP_ALLOWED_ORIGINS` | Default `https://*.<CF_PAGES_PROJECT>.pages.dev` |
-| Variable | `PP_ALLOWED_REPOS` | Default: this repository |
-
-The run summary prints the worker URL and the GitHub App callback URL. A
-good order is: deploy once to get the URL, create the GitHub App with that
-callback, add `PP_GITHUB_CLIENT_ID` and `PP_GITHUB_CLIENT_SECRET`, then run
-the workflow again.
+- `ALLOWED_REPOS` (recommended) limits which repos the worker acts on.
+- Check that it's up: `https://<worker>/health` should return `ok`.
+- Then set the `PP_AUTH_ORIGIN` repository variable (or the `auth=` meta tag
+  field) to the worker URL so previews enable sign-in.
 
 ### Preview cleanup
 

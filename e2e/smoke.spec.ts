@@ -1,4 +1,9 @@
 import { expect, test } from '@playwright/test';
+import { mockGitHub } from './fixtures.js';
+
+test.beforeEach(async ({ page }) => {
+  await mockGitHub(page, []);
+});
 
 const SHA = 'abc1234def5678abc1234def5678abc1234def56';
 
@@ -24,5 +29,5 @@ test('host page styles do not leak into the widget', async ({ page }) => {
 
 test('PR context resolves from query params', async ({ page }) => {
   await page.goto(`/?pp_owner=acme&pp_repo=web&pp_pr=12&pp_sha=${SHA}`);
-  await expect(page.locator('preview-pins').getByText('#12')).toBeVisible();
+  await expect(page.locator('preview-pins').getByText('PR #12')).toBeVisible();
 });

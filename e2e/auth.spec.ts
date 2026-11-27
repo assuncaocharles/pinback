@@ -33,7 +33,29 @@ async function signIn(page: Page) {
 }
 
 test.describe('auth and writing (M2)', () => {
+  const trace: string[] = [];
+
+  test.afterEach(async ({ page }, info) => {
+    // On failure, print what the browser actually did: which GitHub requests ran,
+    // from which frame, how they were answered, and the frame's RPC replies.
+    if (info.status !== info.expectedStatus) {
+      const messages = await page
+        .evaluate(() => (window as unknown as { __ppMessages?: string[] }).__ppMessages ?? [])
+        .catch(() => []);
+      console.log(`--- ${info.title}\n${trace.join('\n')}\n--- host messages\n${messages.join('\n')}`);
+    }
+    trace.length = 0;
+  });
+
   test.beforeEach(async ({ page, context }) => {
+    context.on('request', (r) => {
+      if (/github\.com|localhost:8787/.test(r.url())) trace.push(`REQ ${r.method()} ${r.url()} from=${r.frame().url()}`);
+    });
+    context.on('response', (r) => {
+      if (/github\.com|localhost:8787/.test(r.url())) trace.push(`RES ${r.status()} ${r.request().method()} ${r.url()} fromServiceWorker=${r.fromServiceWorker()}`);
+    });
+    context.on('requestfailed', (r) => trace.push(`FAIL ${r.method()} ${r.url()} ${r.failure()?.errorText ?? ''}`));
+    page.on('console', (m) => trace.push(`CONSOLE ${m.type()} ${m.text()}`));
     // Route at the context level so the popup and the auth iframe are covered too.
     await context.route('https://api.github.com/user', (route) =>
       route.fulfill({ json: { login: 'octocat', avatar_url: 'https://avatars.githubusercontent.com/u/583231?v=4' }, headers: CORS }),

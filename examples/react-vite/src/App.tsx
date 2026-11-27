@@ -10,7 +10,7 @@ export function App() {
     <main className="page">
       <header className="masthead">
         <h1>Checkout</h1>
-        <p className="lede">A small demo page to pin comments on.</p>
+        <p className="lede">A small demo page to pin comments on. Pin this line: it changed in this PR.</p>
       </header>
       <section className="card" aria-labelledby="cart-heading" data-testid="cart">
         <h2 id="cart-heading">Your cart</h2>

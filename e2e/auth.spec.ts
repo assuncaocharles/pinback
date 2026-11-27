@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { CONTEXT_QUERY, CORS, mockGitHub, pinComment } from './fixtures.js';
+import { CONTEXT_QUERY, CORS, blockUnmockedGitHub, mockGitHub, pinComment } from './fixtures.js';
 
 const TOKEN = 'ghu_E2E_SECRET_TOKEN_do_not_leak';
 const AUTH = 'http://localhost:8787';
@@ -48,6 +48,7 @@ test.describe('auth and writing (M2)', () => {
   });
 
   test.beforeEach(async ({ page, context }) => {
+    await blockUnmockedGitHub(context);
     context.on('request', (r) => {
       if (!/github\.com|localhost:8787/.test(r.url())) return;
       const from = r.isNavigationRequest() ? '(navigation)' : r.frame().url();

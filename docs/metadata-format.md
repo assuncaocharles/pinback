@@ -1,3 +1,7 @@
+---
+description: "The hidden metadata pinback stores in each GitHub comment: anchor, page, commit and thread fields (v1)."
+---
+
 # Comment metadata format (v1)
 
 Every pin is an ordinary GitHub PR comment. The comment has three parts:

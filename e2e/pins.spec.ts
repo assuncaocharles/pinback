@@ -18,7 +18,7 @@ test.describe('read-only pins (M1)', () => {
     expect(Math.abs(marker!.x + marker!.width / 2 - (target!.x + target!.width / 2))).toBeLessThan(2);
     expect(Math.abs(marker!.y + marker!.height / 2 - (target!.y + target!.height / 2))).toBeLessThan(2);
 
-    await expect(page.locator(widget).getByRole('button', { name: /Comments, 1 open/ })).toBeVisible();
+    await expect(page.locator(widget).getByRole('button', { name: /^Comments 1 open/ })).toBeVisible();
   });
 
   test('pins follow their element on scroll', async ({ page }) => {
@@ -75,9 +75,9 @@ test.describe('read-only pins (M1)', () => {
     await mockGitHub(page, [pinComment('Old element', { anchor: { testId: 'removed-thing' }, sha: 'deadbee' })]);
     await page.goto(`/${CONTEXT_QUERY}`);
     const w = page.locator(widget);
-    await w.getByRole('button', { name: /Comments, 1 open/ }).click();
+    await w.getByRole('button', { name: /^Comments 1 open/ }).click();
     await expect(w.getByRole('heading', { name: 'Outdated' })).toBeVisible();
-    await w.getByRole('button', { name: 'Comment 1: Old element' }).click();
+    await w.getByRole('button', { name: /^Comment 1 Old element/ }).click();
     await expect(w.getByRole('dialog')).toContainText('Outdated · pinned at deadbee');
     await expect(w.locator('.pin:visible')).toHaveCount(0);
   });

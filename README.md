@@ -60,6 +60,12 @@ pnpm --filter @preview-pins/example-react-vite dev
 Add a changeset (`pnpm changeset`) to any PR that changes a published
 package.
 
+## Accessibility
+
+axe runs in CI on every widget state (light and dark) and must report zero
+violations. Keyboard model and the manual screen-reader checklist:
+[docs/accessibility.md](docs/accessibility.md).
+
 ## Decisions
 
 See [`docs/adr/`](docs/adr).

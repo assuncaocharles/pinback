@@ -7,8 +7,12 @@ Reviewers click an element on a preview URL and leave a comment. The comment
 is posted to the pull request. GitHub is the only database. The only server
 piece is a small, stateless auth worker.
 
-**Status:** M0 (skeleton). The widget renders its toolbar and resolves PR
-context. Pins, threads and writing arrive in M1 and M2.
+**Status:** M1 (read-only pins). The widget reads the PR's comments, anchors
+numbered pins to elements, and shows threads, outdated pins and resolved
+state. Writing comments arrives with sign-in in M2.
+
+The comment storage format is specified in
+[docs/metadata-format.md](docs/metadata-format.md).
 
 ## Packages
 

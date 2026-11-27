@@ -5,7 +5,9 @@ name: Release
 # - merging that PR publishes the bumped packages to npm.
 # Publishing is opt-in via the NPM_PUBLISH repository variable. It uses npm
 # trusted publishing (OIDC, no token) and falls back to the NPM_TOKEN secret
-# when one is set (needed once, for the very first publish).
+# when one is set. With NPM_STAGE=true, versions are staged instead and go
+# live once approved with 2FA on npmjs.com (first publish without a
+# 2FA-bypass token).
 
 on:
   push:
@@ -28,7 +30,7 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: pnpm
-      # Trusted publishing needs npm >= 11.5.
+      # Trusted publishing needs npm >= 11.5, staged publishing >= 11.15.
       - run: npm install -g npm@11
       - run: pnpm install --frozen-lockfile
       - name: Version PR or publish
@@ -39,3 +41,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_STAGE: ${{ vars.NPM_STAGE }}

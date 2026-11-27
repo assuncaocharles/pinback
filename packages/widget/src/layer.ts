@@ -1,10 +1,12 @@
-import { pinPosition, resolveAnchor, type Thread } from '@preview-pins/core';
+import { ANCHOR_APPROXIMATE, ANCHOR_THRESHOLD, AnchorIndex, matchAnchor, pinPosition, type Thread } from '@preview-pins/core';
 import { h } from './dom.js';
 
 interface Pin {
   thread: Thread;
   button: HTMLButtonElement;
   target: Element | null;
+  /** Matched, but with low confidence or a near-tie: shown dashed and labelled. */
+  approximate: boolean;
 }
 
 export interface LayerCallbacks {
@@ -70,7 +72,7 @@ export class PinLayer {
         continue;
       }
       const button = h('button', { type: 'button', class: 'pin', hidden: true }, String(thread.number));
-      const pin: Pin = { thread, button, target: null };
+      const pin: Pin = { thread, button, target: null, approximate: false };
       button.addEventListener('click', () => {
         this.#cb.onOpen(pin.thread, button);
       });
@@ -101,16 +103,26 @@ export class PinLayer {
     const n = replies.length;
     pin.button.setAttribute(
       'aria-label',
-      `Comment ${number} by ${root.author.login}${n ? `, ${n} ${n === 1 ? 'reply' : 'replies'}` : ''}: ${excerpt}`,
+      `Comment ${number} by ${root.author.login}${n ? `, ${n} ${n === 1 ? 'reply' : 'replies'}` : ''}${pin.approximate ? ' (approximate position)' : ''}: ${excerpt}`,
     );
+    pin.button.classList.toggle('approx', pin.approximate);
+    pin.button.title = pin.approximate ? 'The page changed since this comment; the position may be approximate.' : '';
   }
 
   #reanchor(): void {
     let changed = false;
+    // One page scan shared by every pin in this pass (ADR 9).
+    const index = this.#pins.size ? new AnchorIndex(document, this.#host) : null;
     for (const pin of this.#pins.values()) {
-      const target = resolveAnchor(document, pin.thread.root.meta.anchor, { ignore: this.#host });
+      const m = index ? matchAnchor(document, pin.thread.root.meta.anchor, { index }) : null;
+      const target = m && m.confidence >= ANCHOR_THRESHOLD ? m.element : null;
+      const approximate = !!target && !!m && (m.confidence < ANCHOR_APPROXIMATE || m.ambiguous);
       if (!!target !== !!pin.target) changed = true;
       pin.target = target;
+      if (approximate !== pin.approximate) {
+        pin.approximate = approximate;
+        this.#label(pin);
+      }
     }
     this.#schedule();
     if (changed) this.#cb.onAnchorsChange();

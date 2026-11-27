@@ -134,6 +134,7 @@ button[aria-pressed="true"], button[aria-expanded="true"] { background: var(--pp
   will-change: transform;
 }
 .pin:hover { background: var(--pp-accent); filter: brightness(1.1); }
+.pin.approx { background: var(--pp-bg); color: var(--pp-accent); outline: 2px dashed var(--pp-accent); outline-offset: -2px; }
 
 /* Thread dialog */
 dialog.thread {

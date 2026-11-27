@@ -23,7 +23,22 @@ export {
 } from './metadata.js';
 export { buildThreads, normalisePath, threadsForPath, type PinComment, type Thread } from './threads.js';
 export { GitHubBackend, nextLink, type GitHubBackendOptions } from './github.js';
-export { cssPath, describeElement, normaliseText, pinPosition, resolveAnchor, type ResolveOptions } from './anchor.js';
+export {
+  ANCHOR_APPROXIMATE,
+  ANCHOR_THRESHOLD,
+  AnchorIndex,
+  cssPath,
+  describeElement,
+  isStableClass,
+  isStableId,
+  matchAnchor,
+  normaliseText,
+  pinPosition,
+  resolveAnchor,
+  similarity,
+  type AnchorMatch,
+  type ResolveOptions,
+} from './anchor.js';
 export {
   RPC_VERSION,
   isRpcEvent,

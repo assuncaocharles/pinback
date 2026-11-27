@@ -53,9 +53,12 @@ fail validation, but keep the pin.
 | --- | --- | --- |
 | `testId` | string | Nearest `data-testid`, on the element itself or an ancestor. |
 | `source` | string | Nearest `data-pp-src` (`path:line:col`), written by the source plugin (M4). |
-| `cssPath` | string | Short CSS path from the nearest stable `id` (or `body`), using tag names and `:nth-of-type`. Never uses class names. |
-| `textQuote` | `{ exact, prefix, suffix }` | Whitespace-normalised text of the element (max 64 characters) and up to 32 characters of surrounding context from its parent. |
+| `cssPath` | string | Short CSS path from the nearest stable `id` (or `body`), using tag names, `:nth-of-type`, and stable-looking class names when they single the element out. Never uses generated class names. |
+| `textQuote` | `{ exact, prefix, suffix }` | Whitespace-normalised text of the element (max 64 characters) and up to 32 characters of context from the nearest ancestor whose text is longer than the element's own. |
 | `rect` | `{ x, y }` | Click position inside the element's box, as fractions from 0 to 1. Missing means the top-right corner (`{x:1,y:0}`). |
+
+How readers resolve an anchor (confidence scoring, thresholds, outdated
+state) is described in [ADR 9](adr/0009-anchor-scoring.md).
 
 ## Reader rules
 

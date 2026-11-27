@@ -69,3 +69,23 @@ export function resolvePRContextFromPage(
 ): PRContext | null {
   return resolvePRContext(fromMeta(doc), fromQuery(location.search), clean(config));
 }
+
+/**
+ * The auth worker origin: `auth=` in the meta tag, else `config.authOrigin`.
+ * Deliberately not a query param: a crafted link must not be able to point
+ * the widget at someone else's auth frame. Must be https (or http on localhost).
+ */
+export function resolveAuthOrigin(doc: Document, config: { authOrigin?: unknown } = {}): string | null {
+  const content = doc.querySelector(`meta[name="${META_NAME}"]`)?.getAttribute('content') ?? '';
+  const fromMetaTag = /(?:^|;)\s*auth=([^;]+)/.exec(content)?.[1]?.trim();
+  const raw = fromMetaTag ?? (typeof config.authOrigin === 'string' ? config.authOrigin : undefined);
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    const local = url.hostname === 'localhost' || url.hostname === '127.0.0.1';
+    if (url.protocol === 'https:' || (url.protocol === 'http:' && local)) return url.origin;
+  } catch {
+    // fall through
+  }
+  return null;
+}

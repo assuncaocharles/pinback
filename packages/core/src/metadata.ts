@@ -142,6 +142,11 @@ export function formatCommentBody({ text, meta, previewUrl }: FormatOptions): st
   const footer =
     meta.parent === null
       ? `<sub>📌 Pinned on ${where} at ${meta.sha.slice(0, 7)} · preview-pins</sub>`
-      : `<sub>↩︎ Reply via preview-pins</sub>`;
-  return `${text.trim()}\n\n${footer}\n\n${encodeMetadata(meta)}`;
+      : meta.state === 'resolved'
+        ? `<sub>✅ Resolved via preview-pins</sub>`
+        : meta.state === 'open'
+          ? `<sub>↩︎ Reopened via preview-pins</sub>`
+          : `<sub>↩︎ Reply via preview-pins</sub>`;
+  const body = text.trim();
+  return `${body ? `${body}\n\n` : ''}${footer}\n\n${encodeMetadata(meta)}`;
 }

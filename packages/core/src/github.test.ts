@@ -93,3 +93,37 @@ describe('nextLink', () => {
     expect(nextLink(null)).toBeNull();
   });
 });
+
+describe('GitHubBackend (authenticated)', () => {
+  it('sends the token and posts comments', async () => {
+    const fetch = mockFetch((url, init) => {
+      expect((init.headers as Record<string, string>).Authorization).toBe('Bearer t0k');
+      expect(url).toBe(`${API}/repos/acme/web/issues/7/comments`);
+      expect(JSON.parse(init.body as string)).toEqual({ body: 'hello' });
+      return new Response(JSON.stringify(comment(5)), { status: 201 });
+    });
+    const backend = new GitHubBackend({ apiBase: API, fetch, token: () => Promise.resolve('t0k') });
+    const created = await backend.createComment(ctx, 'hello');
+    expect(created.id).toBe('5');
+  });
+
+  it('renders markdown in the repo context', async () => {
+    const fetch = mockFetch((url, init) => {
+      expect(url).toBe(`${API}/markdown`);
+      expect(JSON.parse(init.body as string)).toEqual({ text: '#1', mode: 'gfm', context: 'acme/web' });
+      return new Response('<p><a>#1</a></p>');
+    });
+    const html = await new GitHubBackend({ apiBase: API, fetch }).renderMarkdown(ctx, '#1');
+    expect(html).toBe('<p><a>#1</a></p>');
+  });
+
+  it('maps 401 to unauthenticated', async () => {
+    const fetch = mockFetch(() => new Response('{}', { status: 401 }));
+    await expect(new GitHubBackend({ apiBase: API, fetch }).getViewer()).rejects.toMatchObject({ code: 'unauthenticated' });
+  });
+
+  it('reads push permission', async () => {
+    const fetch = mockFetch(() => json({ permissions: { push: true } }));
+    expect(await new GitHubBackend({ apiBase: API, fetch }).canMaintain(ctx)).toBe(true);
+  });
+});

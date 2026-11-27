@@ -89,7 +89,13 @@ a { color: var(--pp-accent); }
   box-shadow: var(--pp-shadow);
 }
 .toolbar { display: flex; align-items: center; gap: 4px; padding: 4px; }
-button[aria-pressed="true"], button[aria-expanded="true"] { background: var(--pp-accent); color: var(--pp-accent-fg); }
+/* Pressed/expanded keep the accent on hover; the generic hover tint above
+   would otherwise put light text on a near-white background. */
+button[aria-pressed="true"], button[aria-expanded="true"],
+button[aria-pressed="true"]:hover:not(:disabled), button[aria-expanded="true"]:hover:not(:disabled) {
+  background: var(--pp-accent);
+  color: var(--pp-accent-fg);
+}
 .count {
   min-width: 1.5em;
   padding: 0 6px;

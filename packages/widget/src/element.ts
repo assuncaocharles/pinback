@@ -94,9 +94,11 @@ export class PreviewPinsElement extends HTMLElement {
 
     this.#toggle = h('button', { type: 'button', part: 'toggle', 'aria-pressed': 'false' },
       h('span', { 'aria-hidden': 'true' }, '📌'), h('span', {}, 'Comment'));
-    this.#count = h('span', { class: 'count', 'aria-hidden': 'true' }, '0');
+    // Visible text is the start of the accessible name ("Comments 2 open on
+    // this page"), so speech-input users can say what they see (WCAG 2.5.3).
+    this.#count = h('span', { class: 'count' }, '0');
     this.#listButton = h('button', { type: 'button', part: 'list', 'aria-expanded': 'false', 'aria-controls': 'pp-list' },
-      h('span', {}, 'Comments'), this.#count);
+      h('span', {}, 'Comments'), ' ', this.#count, h('span', { class: 'sr-only' }, ' open on this page'));
     this.#statusEl = h('span', { class: 'status', role: 'status' });
     this.#panel = h('div', { id: 'pp-list', class: 'panel', hidden: true });
     this.#live = h('div', { class: 'sr-only', 'aria-live': 'polite' });
@@ -433,7 +435,6 @@ export class PreviewPinsElement extends HTMLElement {
   #renderChrome(): void {
     const open = threadsForPath(this.#threads, this.#pathname).filter((t) => t.state === 'open');
     this.#count.textContent = String(open.length);
-    this.#listButton.setAttribute('aria-label', `Comments, ${open.length} open on this page`);
     if (this.#panelOpen) this.#renderPanel();
   }
 

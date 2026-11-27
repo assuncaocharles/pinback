@@ -62,7 +62,7 @@ test('pins recorded on an older build land on the right elements', async ({ page
   // The banner pin is outdated: listed with its original SHA, not drawn.
   await expect(w.locator('.pin')).toHaveCount(3);
   await expect(w.locator('.pin:visible')).toHaveCount(2);
-  await w.getByRole('button', { name: /Comments,/ }).click();
+  await w.getByRole('button', { name: /^Comments \d/ }).click();
   await expect(w.getByRole('heading', { name: 'Outdated' })).toBeVisible();
   await expect(w.locator('.panel')).toContainText('pinned at oldsha1');
 });

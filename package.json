@@ -22,6 +22,7 @@
     "build:example:e2e": "PREVIEW_PINS=1 PREVIEW_PINS_AUTH_ORIGIN=http://localhost:8787 pnpm --filter @preview-pins/example-react-vite build"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.1",
     "@changesets/cli": "^3.0.3",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.65.1",

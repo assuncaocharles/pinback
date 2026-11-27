@@ -1,0 +1,8 @@
+[
+  {
+    "name": "widget (IIFE, script tag)",
+    "path": "packages/widget/dist/preview-pins.js",
+    "limit": "30 kB",
+    "gzip": true
+  }
+]

@@ -61,7 +61,8 @@ pnpm --filter @assuncaocharles/pinback-example dev
 ```
 
 Add a changeset (`pnpm changeset`) to any PR that changes a published
-package.
+package. Releases publish to npm with trusted publishing; see
+[docs/releasing.md](docs/releasing.md).
 
 ## Optional screenshots
 

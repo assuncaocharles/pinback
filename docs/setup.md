@@ -1,3 +1,7 @@
+---
+description: "Add pinback to your preview deployments: one script tag, a GitHub App and a one-click auth worker. About 10 minutes."
+---
+
 # Setup
 
 From a fresh repo to pins on your previews: about 10 minutes.

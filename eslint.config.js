@@ -17,10 +17,15 @@ export default tseslint.config(
   },
   {
     files: ['**/*.test.ts', 'e2e/**/*.ts'],
-    rules: { '@typescript-eslint/no-non-null-assertion': 'off' },
+    rules: {
+      '@typescript-eslint/no-non-null-assertion': 'off',
+      // Test helpers routinely use typed result helpers and stringify fetch inputs.
+      '@typescript-eslint/no-unnecessary-type-parameters': 'off',
+      '@typescript-eslint/no-base-to-string': 'off',
+    },
   },
   {
-    files: ['**/*.js', '**/*.config.ts'],
+    files: ['**/*.js', '**/*.mjs', '**/*.config.ts'],
     ...tseslint.configs.disableTypeChecked,
   },
 );

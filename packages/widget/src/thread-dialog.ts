@@ -1,38 +1,96 @@
-import type { PinComment, Thread } from '@preview-pins/core';
+import type { PinComment, Thread, ThreadState, Viewer } from '@preview-pins/core';
+import { Composer } from './composer.js';
 import { h, relativeTime } from './dom.js';
 import { sanitize, stripFooter } from './sanitize.js';
+
+export interface ThreadDialogCallbacks {
+  /** Focus target when the invoker is gone. */
+  fallbackFocus(): HTMLElement | null;
+  /** Null when writing isn't configured (no auth worker). */
+  writing: {
+    reply(thread: Thread, text: string): Promise<void>;
+    setState(thread: Thread, state: ThreadState): Promise<void>;
+    signIn(): void;
+    renderPreview(text: string): Promise<string>;
+    canResolve(thread: Thread): boolean;
+  } | null;
+}
 
 /**
  * Thread view: a native modal <dialog>, which gives us the WAI-ARIA dialog
  * pattern (focus containment, inert background, Escape to close) and renders
- * in the top layer above any host z-index. We add focus restoration and
- * positioning next to the pin.
+ * in the top layer above any host z-index. We add focus restoration,
+ * positioning next to the pin, and (M2) a reply box.
  */
 export class ThreadDialog {
   readonly element: HTMLDialogElement;
   #invoker: HTMLElement | null = null;
-  #fallbackFocus: () => HTMLElement | null;
+  #thread: Thread | null = null;
+  #outdated = false;
+  #viewer: Viewer | null = null;
+  #writable = false;
+  readonly #composer: Composer | null;
+  readonly #stateButton: HTMLButtonElement;
+  readonly #cb: ThreadDialogCallbacks;
 
-  constructor(fallbackFocus: () => HTMLElement | null) {
-    this.#fallbackFocus = fallbackFocus;
+  constructor(cb: ThreadDialogCallbacks) {
+    this.#cb = cb;
     this.element = h('dialog', { class: 'thread', 'aria-labelledby': 'pp-thread-title' });
     this.element.addEventListener('close', this.#restoreFocus);
-    // Click on the backdrop (the dialog element itself, outside its box) closes it.
     this.element.addEventListener('click', (e) => {
       if (e.target === this.element) this.close();
     });
+    this.#stateButton = h('button', { type: 'button', class: 'secondary' });
+    this.#stateButton.addEventListener('click', () => { void this.#toggleState(); });
+    const w = cb.writing;
+    this.#composer = w
+      ? new Composer(
+          { label: 'Reply', submitLabel: 'Reply', placeholder: 'Reply…', extra: [this.#stateButton] },
+          {
+            submit: (text) => (this.#thread ? w.reply(this.#thread, text) : Promise.resolve()),
+            signIn: () => { w.signIn(); },
+            renderPreview: (text) => w.renderPreview(text),
+          },
+        )
+      : null;
   }
 
   get isOpen(): boolean {
     return this.element.open;
   }
 
+  get threadId(): string | null {
+    return this.element.open ? (this.#thread?.id ?? null) : null;
+  }
+
   open(thread: Thread, invoker: HTMLElement, outdated: boolean): void {
     this.#invoker = invoker;
-    this.element.replaceChildren(this.#render(thread, outdated));
+    if (this.#thread?.id !== thread.id) this.#composer?.reset();
+    this.#thread = thread;
+    this.#outdated = outdated;
+    this.#render();
     if (!this.element.open) this.element.showModal();
     this.#position(invoker);
     this.element.querySelector<HTMLElement>('#pp-thread-title')?.focus();
+  }
+
+  /** Re-render with fresh data (new replies, state change) without losing the draft. */
+  update(thread: Thread): void {
+    if (!this.element.open || this.#thread?.id !== thread.id) return;
+    this.#thread = thread;
+    this.#render();
+  }
+
+  setViewer(viewer: Viewer | null): void {
+    this.#viewer = viewer;
+    this.#composer?.setViewer(viewer);
+    if (this.element.open) this.#render();
+  }
+
+  /** Whether an auth worker is configured; without one there's no reply box. */
+  setWritable(writable: boolean): void {
+    this.#writable = writable;
+    if (this.element.open) this.#render();
   }
 
   close(): void {
@@ -40,10 +98,21 @@ export class ThreadDialog {
   }
 
   #restoreFocus = (): void => {
-    const target = this.#invoker?.isConnected && !this.#invoker.hidden ? this.#invoker : this.#fallbackFocus();
+    const target = this.#invoker?.isConnected && !this.#invoker.hidden ? this.#invoker : this.#cb.fallbackFocus();
     this.#invoker = null;
     target?.focus();
   };
+
+  async #toggleState(): Promise<void> {
+    const w = this.#cb.writing;
+    if (!w || !this.#thread) return;
+    this.#stateButton.disabled = true;
+    try {
+      await w.setState(this.#thread, this.#thread.state === 'open' ? 'resolved' : 'open');
+    } finally {
+      this.#stateButton.disabled = false;
+    }
+  }
 
   #position(invoker: HTMLElement): void {
     const d = this.element;
@@ -65,42 +134,44 @@ export class ThreadDialog {
     d.style.top = `${Math.round(top)}px`;
   }
 
-  #render(thread: Thread, outdated: boolean): DocumentFragment {
-    const frag = document.createDocumentFragment();
+  #render(): void {
+    const thread = this.#thread;
+    if (!thread) return;
     const close = h('button', { type: 'button', class: 'icon', 'aria-label': 'Close' }, '×');
-    close.addEventListener('click', () => {
-      this.close();
-    });
+    close.addEventListener('click', () => { this.close(); });
 
     const badges = h('div', { class: 'badges' });
-    if (thread.state === 'resolved') badges.append(h('span', { class: 'badge' }, 'Resolved'));
-    if (outdated)
-      badges.append(h('span', { class: 'badge warn' }, `Outdated · pinned at ${thread.root.meta.sha.slice(0, 7)}`));
+    if (thread.state === 'resolved') {
+      badges.append(h('span', { class: 'badge' }, thread.stateChangedBy ? `Resolved by ${thread.stateChangedBy}` : 'Resolved'));
+    }
+    if (this.#outdated) badges.append(h('span', { class: 'badge warn' }, `Outdated · pinned at ${thread.root.meta.sha.slice(0, 7)}`));
 
-    frag.append(
-      h(
-        'header',
-        {},
-        h('h2', { id: 'pp-thread-title', tabindex: -1 }, `Comment ${thread.number}`),
-        close,
-      ),
+    const w = this.#writable ? this.#cb.writing : null;
+    const composer = w ? this.#composer : null;
+    const canResolve = !!w && !!this.#viewer && w.canResolve(thread);
+    this.#stateButton.hidden = !canResolve;
+    this.#stateButton.textContent = thread.state === 'open' ? 'Resolve' : 'Reopen';
+
+    const parts: (HTMLElement | null)[] = [
+      h('header', {}, h('h2', { id: 'pp-thread-title', tabindex: -1 }, `Comment ${thread.number}`), close),
       badges,
       h('ol', { class: 'comments' }, ...[thread.root, ...thread.replies].map(renderComment)),
+      composer ? h('div', { class: 'reply' }, composer.element) : null,
       h(
         'footer',
         {},
         h('a', { href: thread.root.htmlUrl, target: '_blank', rel: 'noopener noreferrer' }, 'View on GitHub'),
-        h('span', { class: 'muted' }, 'Replying arrives with sign-in'),
+        composer ? null : h('span', { class: 'muted' }, 'Commenting is not configured for this preview'),
       ),
-    );
-    return frag;
+    ];
+    this.element.replaceChildren(...parts.filter((p): p is HTMLElement => !!p));
   }
 }
 
 function renderComment(c: PinComment): HTMLLIElement {
   const body = h('div', { class: 'body' });
   if (c.bodyHtml) body.append(stripFooter(sanitize(c.bodyHtml)));
-  else body.append(h('p', {}, c.text));
+  else body.append(h('p', {}, c.text.replace(/<sub>[\s\S]*?<\/sub>/g, '').trim()));
   return h(
     'li',
     {},

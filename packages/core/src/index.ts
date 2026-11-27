@@ -4,6 +4,7 @@ export {
   fromMeta,
   fromQuery,
   resolvePRContext,
+  resolveAuthOrigin,
   resolvePRContextFromPage,
   type PartialPRContext,
 } from './context.js';
@@ -23,3 +24,19 @@ export {
 export { buildThreads, normalisePath, threadsForPath, type PinComment, type Thread } from './threads.js';
 export { GitHubBackend, nextLink, type GitHubBackendOptions } from './github.js';
 export { cssPath, describeElement, normaliseText, pinPosition, resolveAnchor, type ResolveOptions } from './anchor.js';
+export {
+  RPC_VERSION,
+  isRpcEvent,
+  isRpcRequest,
+  isRpcResponse,
+  isSealedSignIn,
+  type CreateCommentParams,
+  type RpcErrorCode,
+  type RpcEvent,
+  type RpcMethod,
+  type RpcMethods,
+  type RpcRequest,
+  type RpcResponse,
+  type SealedSignIn,
+  type Viewer,
+} from './rpc.js';

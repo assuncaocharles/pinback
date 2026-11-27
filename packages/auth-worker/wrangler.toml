@@ -2,10 +2,20 @@ name = "preview-pins-auth"
 main = "src/index.ts"
 compatibility_date = "2026-11-01"
 
-[vars]
-# Comma-separated list of origins allowed to embed the auth iframe and call
-# the worker. Exact origins, or a single leading wildcard label such as
-# https://*.pages.dev. Override per environment in the dashboard.
-ALLOWED_ORIGINS = "http://localhost:5173,http://localhost:4173"
+# frame.js and callback.js, built by `vite build`.
+[assets]
+directory = "./dist/public"
 
-# Secrets (set with `wrangler secret put`): GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET
+[vars]
+# Comma-separated origins allowed to embed the auth frame and receive sign-ins.
+# Exact origins, or a single leading wildcard label such as
+# https://*.preview-pins-demo.pages.dev. Override per environment.
+ALLOWED_ORIGINS = "http://localhost:5173,http://localhost:4173"
+# Optional comma-separated owner/repo list this worker will act on. Empty = any.
+ALLOWED_REPOS = ""
+# Your GitHub App's client ID (not secret).
+GITHUB_CLIENT_ID = ""
+
+# Secrets, set with `wrangler secret put <NAME>`:
+#   GITHUB_CLIENT_SECRET  GitHub App client secret
+#   SESSION_KEY           32 random bytes, base64 (openssl rand -base64 32)

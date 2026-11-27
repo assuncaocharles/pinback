@@ -8,7 +8,7 @@ test.beforeEach(async ({ page }) => {
 const SHA = 'abc1234def5678abc1234def5678abc1234def56';
 
 test('the script tag mounts the widget in a shadow root', async ({ page }) => {
-  await page.goto('/');
+  await page.goto(`/?pp_owner=acme&pp_repo=web&pp_pr=12&pp_sha=${SHA}`);
   const toggle = page.locator('preview-pins').getByRole('button', { name: 'Comment', exact: true });
   await expect(toggle).toBeVisible();
   await expect(toggle).toHaveAttribute('aria-pressed', 'false');

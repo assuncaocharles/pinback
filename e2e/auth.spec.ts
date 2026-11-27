@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { CONTEXT_QUERY, mockGitHub, pinComment } from './fixtures.js';
+import { CONTEXT_QUERY, CORS, mockGitHub, pinComment } from './fixtures.js';
 
 const TOKEN = 'ghu_E2E_SECRET_TOKEN_do_not_leak';
 const AUTH = 'http://localhost:8787';
@@ -36,7 +36,7 @@ test.describe('auth and writing (M2)', () => {
   test.beforeEach(async ({ page, context }) => {
     // Route at the context level so the popup and the auth iframe are covered too.
     await context.route('https://api.github.com/user', (route) =>
-      route.fulfill({ json: { login: 'octocat', avatar_url: 'https://avatars.githubusercontent.com/u/583231?v=4' }, headers: { 'Access-Control-Allow-Origin': '*' } }),
+      route.fulfill({ json: { login: 'octocat', avatar_url: 'https://avatars.githubusercontent.com/u/583231?v=4' }, headers: CORS }),
     );
     await recordHostMessages(page);
   });
@@ -44,14 +44,14 @@ test.describe('auth and writing (M2)', () => {
   test('the token never reaches the host page', async ({ page }) => {
     const created: { auth: string | undefined; frameUrl: string; body: string }[] = [];
     await mockGitHub(page, []);
-    await page.route('https://api.github.com/repos/acme/web/issues/12/comments', async (route) => {
+    await page.context().route('https://api.github.com/repos/acme/web/issues/12/comments', async (route) => {
       const req = route.request();
       if (req.method() !== 'POST') return route.fallback();
       const { body } = req.postDataJSON() as { body: string };
       created.push({ auth: req.headers().authorization, frameUrl: req.frame().url(), body });
       await route.fulfill({
         status: 201,
-        headers: { 'Access-Control-Allow-Origin': '*' },
+        headers: CORS,
         json: { ...pinComment('x', {}), id: 4242, body, body_html: '<p>Bigger please</p>', user: { login: 'octocat', avatar_url: '' } },
       });
     });
@@ -122,14 +122,14 @@ test.describe('auth and writing (M2)', () => {
     const root = pinComment('Root', { anchor: { testId: 'checkout-button' } }, 'octocat');
     await mockGitHub(page, [root]);
     let lastBody = '';
-    await page.route('https://api.github.com/repos/acme/web/issues/12/comments', async (route) => {
+    await page.context().route('https://api.github.com/repos/acme/web/issues/12/comments', async (route) => {
       const req = route.request();
       if (req.method() !== 'POST') return route.fallback();
       lastBody = (req.postDataJSON() as { body: string }).body;
-      await route.fulfill({ status: 201, headers: { 'Access-Control-Allow-Origin': '*' }, json: { ...pinComment('r', {}), body: lastBody, body_html: '<p>Done</p>', user: { login: 'octocat', avatar_url: '' } } });
+      await route.fulfill({ status: 201, headers: CORS, json: { ...pinComment('r', {}), body: lastBody, body_html: '<p>Done</p>', user: { login: 'octocat', avatar_url: '' } } });
     });
-    await page.route('https://api.github.com/repos/acme/web', (route) =>
-      route.fulfill({ headers: { 'Access-Control-Allow-Origin': '*' }, json: { permissions: { push: false } } }),
+    await page.context().route('https://api.github.com/repos/acme/web', (route) =>
+      route.fulfill({ headers: CORS, json: { permissions: { push: false } } }),
     );
 
     await page.goto(`/${CONTEXT_QUERY}`);

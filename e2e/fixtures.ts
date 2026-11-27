@@ -25,11 +25,23 @@ export interface ApiMock {
   requests: { url: string; ifNoneMatch: string | undefined }[];
 }
 
-/** Serves issue comments from `comments`, review comments as [], with ETags. */
+/** CORS headers a GitHub mock needs, including for authenticated calls from the auth frame. */
+export const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Expose-Headers': 'ETag, Link',
+  'Access-Control-Allow-Headers': 'Authorization, Content-Type, Accept, If-None-Match, X-GitHub-Api-Version',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+};
+
+/**
+ * Serves issue comments from `comments`, review comments as [], with ETags.
+ * Routes on the browser context, not the page, so requests from the
+ * cross-origin auth frame (which may run out of process) are covered too.
+ */
 export async function mockGitHub(page: Page, comments: unknown[]): Promise<ApiMock> {
   const mock: ApiMock = { requests: [] };
   const etag = '"fixture-v1"';
-  await page.route('https://api.github.com/**', async (route: Route) => {
+  await page.context().route('https://api.github.com/**', async (route: Route) => {
     const req = route.request();
     // Only the comment list endpoints; let other routes (or tests) handle the rest.
     if (req.method() !== 'OPTIONS' && (req.method() !== 'GET' || !/\/(issues|pulls)\/\d+\/comments/.test(req.url()))) {
@@ -38,9 +50,9 @@ export async function mockGitHub(page: Page, comments: unknown[]): Promise<ApiMo
     }
     const ifNoneMatch = req.headers()['if-none-match'];
     mock.requests.push({ url: req.url(), ifNoneMatch });
-    const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Expose-Headers': 'ETag, Link' };
+    const cors = CORS;
     if (req.method() === 'OPTIONS') {
-      await route.fulfill({ status: 204, headers: { ...cors, 'Access-Control-Allow-Headers': '*' } });
+      await route.fulfill({ status: 204, headers: cors });
       return;
     }
     if (ifNoneMatch === etag) {
@@ -51,6 +63,6 @@ export async function mockGitHub(page: Page, comments: unknown[]): Promise<ApiMo
     await route.fulfill({ status: 200, headers: { ...cors, ETag: etag }, contentType: 'application/json', body: JSON.stringify(body) });
   });
   // Avatars: avoid real network in tests.
-  await page.route('https://avatars.githubusercontent.com/**', (route) => route.fulfill({ status: 204 }));
+  await page.context().route('https://avatars.githubusercontent.com/**', (route) => route.fulfill({ status: 204 }));
   return mock;
 }

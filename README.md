@@ -7,9 +7,12 @@ Reviewers click an element on a preview URL and leave a comment. The comment
 is posted to the pull request. GitHub is the only database. The only server
 piece is a small, stateless auth worker.
 
-**Status:** M1 (read-only pins). The widget reads the PR's comments, anchors
-numbered pins to elements, and shows threads, outdated pins and resolved
-state. Writing comments arrives with sign-in in M2.
+**Status:** M2 (auth and writing). Reviewers sign in with GitHub, pin
+comments to elements, reply, and resolve threads. The GitHub token lives
+only in an isolated auth frame and is never readable by the preview page
+([ADR 7](docs/adr/0007-token-isolation.md)).
+
+**Get started:** [docs/setup.md](docs/setup.md).
 
 The comment storage format is specified in
 [docs/metadata-format.md](docs/metadata-format.md).
@@ -27,7 +30,7 @@ The comment storage format is specified in
 ## Usage (preview)
 
 ```html
-<meta name="preview-pins" content="owner=acme;repo=web;pr=42;sha=0123abc...">
+<meta name="preview-pins" content="owner=acme;repo=web;pr=42;sha=0123abc...;auth=https://preview-pins-auth.you.workers.dev">
 <script src="https://unpkg.com/@preview-pins/widget/dist/preview-pins.js" defer></script>
 ```
 
@@ -45,7 +48,7 @@ pnpm build            # libraries and widget
 pnpm test             # Vitest, all packages
 pnpm lint && pnpm typecheck
 pnpm size             # widget bundle budget
-pnpm build:example && pnpm e2e   # Playwright against the built demo
+pnpm build:example:e2e && pnpm e2e   # Playwright: built demo + auth worker harness
 pnpm --filter @preview-pins/example-react-vite dev
 ```
 

@@ -9,15 +9,25 @@ const require = createRequire(import.meta.url);
 /**
  * Demonstrates the intended drop-in setup: one <script> tag for the widget
  * plus a <meta name="preview-pins"> tag built from CI env vars.
- * Outside CI there is no PR, so the meta tag is omitted and the widget
+ * Outside CI there is no PR, so those fields are omitted and the widget
  * falls back to query params (?pp_owner=&pp_repo=&pp_pr=&pp_sha=).
+ * PREVIEW_PINS_AUTH_ORIGIN adds `auth=` so reviewers can sign in and comment.
  */
 function previewPinsDemo(): Plugin {
   const widgetPath = require.resolve('@preview-pins/widget/preview-pins.js');
   const [owner, repo] = (process.env.GITHUB_REPOSITORY ?? '').split('/');
   const pr = process.env.PREVIEW_PINS_PR;
   const sha = process.env.PREVIEW_PINS_SHA;
-  const meta = owner && repo && pr && sha ? `owner=${owner};repo=${repo};pr=${pr};sha=${sha}` : null;
+  // PR fields only as a complete set: GitHub Actions always sets
+  // GITHUB_REPOSITORY, and a half context would override query params.
+  const complete = owner && repo && pr && sha;
+  const fields: Record<string, string | undefined> = {
+    ...(complete ? { owner, repo, pr, sha } : {}),
+    // The auth worker origin enables sign-in and writing.
+    auth: process.env.PREVIEW_PINS_AUTH_ORIGIN,
+  };
+  const pairs = Object.entries(fields).filter(([, v]) => v);
+  const meta = pairs.length ? pairs.map(([k, v]) => `${k}=${v ?? ''}`).join(';') : null;
 
   return {
     name: 'preview-pins-demo',

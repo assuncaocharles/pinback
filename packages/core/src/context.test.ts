@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, expect, it, beforeEach } from 'vitest';
-import { fromMeta, fromQuery, resolvePRContext, resolvePRContextFromPage } from './context.js';
+import { fromMeta, fromQuery, resolveAuthOrigin, resolvePRContext, resolvePRContextFromPage } from './context.js';
 
 const SHA = 'abc1234def5678abc1234def5678abc1234def56';
 
@@ -67,5 +67,24 @@ describe('resolvePRContextFromPage', () => {
       { owner: 'cfg', repo: 'cfg', prNumber: 3, commitSha: SHA },
     );
     expect(ctx).toEqual({ owner: 'from-meta', repo: 'from-query', prNumber: 3, commitSha: SHA });
+  });
+});
+
+describe('resolveAuthOrigin', () => {
+  beforeEach(() => {
+    document.head.innerHTML = '';
+  });
+
+  it('reads auth= from the meta tag, normalised to an origin', () => {
+    setMeta('owner=a;repo=b;auth=https://auth.example.dev/frame');
+    expect(resolveAuthOrigin(document)).toBe('https://auth.example.dev');
+  });
+
+  it('falls back to config', () => {
+    expect(resolveAuthOrigin(document, { authOrigin: 'http://localhost:8787' })).toBe('http://localhost:8787');
+  });
+
+  it.each(['http://auth.example.dev', 'javascript:alert(1)', 'nope'])('rejects %s', (v) => {
+    expect(resolveAuthOrigin(document, { authOrigin: v })).toBeNull();
   });
 });

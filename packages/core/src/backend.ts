@@ -41,7 +41,7 @@ export interface Backend {
 export class BackendError extends Error {
   constructor(
     message: string,
-    readonly code: 'not-found' | 'rate-limited' | 'network' | 'http',
+    readonly code: 'not-found' | 'rate-limited' | 'network' | 'http' | 'unauthenticated' | 'forbidden' | 'invalid',
     /** For rate-limited: when the limit resets. */
     readonly resetAt?: Date,
   ) {

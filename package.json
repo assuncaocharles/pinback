@@ -18,7 +18,8 @@
     "size": "size-limit",
     "changeset": "changeset",
     "version-packages": "changeset version",
-    "release": "pnpm build && changeset publish"
+    "release": "pnpm build && changeset publish",
+    "build:example:e2e": "PREVIEW_PINS_AUTH_ORIGIN=http://localhost:8787 pnpm --filter @preview-pins/example-react-vite build"
   },
   "devDependencies": {
     "@changesets/cli": "^3.0.3",

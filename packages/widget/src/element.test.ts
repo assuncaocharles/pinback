@@ -57,12 +57,11 @@ describe('<preview-pins>', () => {
     expect(customElements.get(TAG_NAME)).toBe(PreviewPinsElement);
   });
 
-  it('toggles comment mode and exits on Escape', async () => {
+  it('disables comment mode when no auth worker is configured', async () => {
     const el = await mount();
-    const toggle = q(el, '[part="toggle"]')!;
-    toggle.click();
-    expect(toggle.getAttribute('aria-pressed')).toBe('true');
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    const toggle = q(el, '[part="toggle"]') as HTMLButtonElement;
+    expect(toggle.disabled).toBe(true);
+    el.commentMode = true;
     expect(el.commentMode).toBe(false);
   });
 

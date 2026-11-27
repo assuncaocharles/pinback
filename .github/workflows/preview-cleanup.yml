@@ -1,0 +1,81 @@
+name: Preview cleanup
+
+# Deletes a PR's Cloudflare Pages preview when the PR is closed or merged, so
+# https://pr-<n>.<project>.pages.dev stops serving and nobody keeps pinning
+# comments to a finished PR. Run it manually to clean up older previews.
+#
+# Uses the same CLOUDFLARE_API_TOKEN (Pages: Edit) and CLOUDFLARE_ACCOUNT_ID
+# secrets as the preview deploy.
+
+on:
+  pull_request:
+    types: [closed]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: PR number(s) whose preview to delete, space-separated (e.g. "1 2 3")
+        required: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CF_PAGES_PROJECT: ${{ vars.CF_PAGES_PROJECT || 'preview-pins-demo' }}
+      PRS: ${{ github.event.inputs.pr || github.event.pull_request.number }}
+    steps:
+      - name: Delete Pages deployments for the PR branch
+        run: |
+          set -euo pipefail
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::warning::Cloudflare secrets not set; nothing to clean up."
+            exit 0
+          fi
+          api="https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$CF_PAGES_PROJECT/deployments"
+          auth=(-H "Authorization: Bearer $CLOUDFLARE_API_TOKEN")
+
+          # Collect every preview deployment once, then match branches.
+          all='[]'
+          page=1
+          while :; do
+            res=$(curl -fsS "${auth[@]}" "$api?env=preview&page=$page&per_page=25")
+            all=$(jq -c --argjson acc "$all" '$acc + [.result[] | {id, branch: .deployment_trigger.metadata.branch}]' <<<"$res")
+            total=$(jq -r '.result_info.total_pages // 1' <<<"$res")
+            [ "$page" -ge "$total" ] && break
+            page=$((page + 1))
+          done
+
+          for pr in $PRS; do
+            case "$pr" in (*[!0-9]*|'') echo "::error::Not a PR number: $pr"; exit 1;; esac
+            ids=$(jq -r --arg b "pr-$pr" '.[] | select(.branch == $b) | .id' <<<"$all")
+            if [ -z "$ids" ]; then
+              echo "No deployments for pr-$pr"
+              continue
+            fi
+            for id in $ids; do
+              curl -fsS -X DELETE "${auth[@]}" "$api/$id?force=true" > /dev/null
+              echo "Deleted $id (pr-$pr)"
+            done
+            echo "::notice::Removed preview https://pr-$pr.$CF_PAGES_PROJECT.pages.dev"
+          done
+
+      - name: Update the preview comment
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const marker = '<!-- preview-pins:deploy -->';
+            const { owner, repo } = context.repo;
+            for (const pr of process.env.PRS.split(/\s+/).filter(Boolean)) {
+              const issue_number = Number(pr);
+              const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number });
+              const existing = comments.find((c) => c.body?.startsWith(marker));
+              if (!existing) continue;
+              const body = `${marker}\n~~Preview~~ removed: this PR is closed.`;
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            }

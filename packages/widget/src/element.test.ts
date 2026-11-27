@@ -161,4 +161,17 @@ describe('<preview-pins>', () => {
     await new Promise((r) => requestAnimationFrame(r));
     expect(pins(el)[0]!.hidden).toBe(false);
   });
+
+  it('marks low-confidence matches as approximate', async () => {
+    // Text tweaked, no testId, structure changed: still found, but not confidently.
+    const el = await mount([
+      rawPin(1, 'Was "Place order"', {
+        url: '/',
+        anchor: { cssPath: '#app > div > button', textQuote: { exact: 'Place your order now', prefix: '', suffix: '' } },
+      }),
+    ]);
+    const pin = pins(el)[0]!;
+    expect(pin.classList.contains('approx')).toBe(true);
+    expect(pin.getAttribute('aria-label')).toContain('(approximate position)');
+  });
 });

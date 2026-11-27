@@ -90,6 +90,13 @@ good order is: deploy once to get the URL, create the GitHub App with that
 callback, add `PP_GITHUB_CLIENT_ID` and `PP_GITHUB_CLIENT_SECRET`, then run
 the workflow again.
 
+### Preview cleanup
+
+`.github/workflows/preview-cleanup.yml` deletes a PR's Pages deployments when
+the PR is closed or merged, so its `pr-<n>` URL stops serving. To remove older
+previews, run it manually (Actions → Preview cleanup → Run workflow) with the
+PR numbers, e.g. `1 2 3`.
+
 ## 4. Try it
 
 Open a PR, open its preview, and click **Comment** in the toolbar. Then pick

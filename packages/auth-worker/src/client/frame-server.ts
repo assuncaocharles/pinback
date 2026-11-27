@@ -2,12 +2,16 @@ import {
   BackendError,
   GitHubBackend,
   RPC_VERSION,
+  chooseReviewTarget,
   decodeMetadata,
+  parseSource,
   encodeMetadata,
   formatCommentBody,
   isRpcRequest,
   type CreateCommentParams,
+  type PinMetadata,
   type PRContext,
+  type RawComment,
   type RpcErrorCode,
   type RpcEvent,
   type RpcMethod,
@@ -119,10 +123,10 @@ export class FrameServer {
         await this.#emitAuth();
         return null;
       case 'listComments':
-        return this.#github.listComments(this.#ctx(p.ctx));
+        return this.#listComments(this.#ctx(p.ctx));
       case 'createComment':
         this.#requireAuth();
-        return this.#github.createComment(this.#ctx((p as Partial<CreateCommentParams>).ctx), this.#body(p));
+        return this.#createComment(this.#ctx((p as Partial<CreateCommentParams>).ctx), p);
       case 'renderMarkdown': {
         this.#requireAuth();
         const text = p.text;
@@ -158,8 +162,86 @@ export class FrameServer {
     return { owner: c.owner, repo: c.repo, prNumber: c.prNumber, commitSha: c.commitSha };
   }
 
-  /** Builds the comment body here, so the metadata block is always well-formed. */
-  #body(p: Record<string, unknown>): string {
+  /**
+   * Comments plus, when signed in, GitHub's resolved state for review threads
+   * (ADR 5). The GraphQL lookup is best-effort: on failure the widget falls
+   * back to preview-pins state events.
+   */
+  async #listComments(ctx: PRContext): Promise<RawComment[]> {
+    const comments = await this.#github.listComments(ctx);
+    if (!this.#auth() || !comments.some((c) => c.kind === 'review')) return comments;
+    try {
+      const states = await this.#github.reviewThreadStates(ctx);
+      return comments.map((c) => {
+        const s = c.kind === 'review' ? states.get(c.id) : undefined;
+        return s ? { ...c, threadResolved: s.isResolved } : c;
+      });
+    } catch {
+      return comments;
+    }
+  }
+
+  /**
+   * Root pins on a file in the PR diff become review comments on that line
+   * (ADR 10, docs/source-line-comments.md); everything else is a plain PR
+   * comment. Replies stay where their thread lives.
+   */
+  async #createComment(ctx: PRContext, p: Record<string, unknown>): Promise<RawComment> {
+    const { text, meta, previewUrl } = this.#prepare(p);
+    const parentKind = p.parentKind === 'review' ? 'review' : 'issue';
+    const plain = () => this.#github.createComment(ctx, formatCommentBody({ text, meta, ...(previewUrl ? { previewUrl } : {}) }));
+
+    if (meta.parent !== null) {
+      if (parentKind !== 'review') return plain();
+      let created: RawComment;
+      try {
+        created = await this.#github.replyToReviewComment(ctx, String(meta.parent), formatCommentBody({ text, meta }));
+      } catch (err) {
+        if (!isFallbackable(err)) throw err;
+        created = await plain();
+      }
+      if (meta.state) await this.#syncReviewThread(ctx, String(meta.parent), meta.state === 'resolved');
+      return created;
+    }
+
+    // A review comment must target the exact commit the preview was built from.
+    if (!/^[0-9a-f]{40}$/i.test(ctx.commitSha) || !meta.anchor.source) return plain();
+    let target;
+    try {
+      target = chooseReviewTarget(await this.#github.listPullFiles(ctx), meta.anchor.source);
+    } catch {
+      return plain();
+    }
+    if (target.kind !== 'review') return plain();
+    const loc = parseSource(meta.anchor.source);
+    const elementAt = !target.exact && loc ? `${loc.path}:${loc.line}` : undefined;
+    const body = formatCommentBody({
+      text,
+      meta,
+      ...(previewUrl ? { previewUrl } : {}),
+      ...(elementAt ? { elementAt } : {}),
+    });
+    try {
+      return await this.#github.createReviewComment(ctx, { body, path: target.path, line: target.line, commitSha: ctx.commitSha });
+    } catch (err) {
+      // e.g. 422: line not in the diff at that commit (the PR moved on).
+      if (!isFallbackable(err)) throw err;
+      return plain();
+    }
+  }
+
+  /** Mirrors a preview-pins resolve/reopen onto GitHub's review thread. Best-effort. */
+  async #syncReviewThread(ctx: PRContext, rootId: string, resolved: boolean): Promise<void> {
+    try {
+      const thread = (await this.#github.reviewThreadStates(ctx)).get(rootId);
+      if (thread && thread.isResolved !== resolved) await this.#github.setReviewThreadResolved(thread.threadId, resolved);
+    } catch {
+      // The state event is already posted; GitHub's UI just won't mirror it.
+    }
+  }
+
+  /** Validates the request and normalises its parts; the body is always built here. */
+  #prepare(p: Record<string, unknown>): { text: string; meta: PinMetadata; previewUrl?: string } {
     const text = p.text;
     // Round-trip through the codec: anything that wouldn't parse back is rejected.
     const meta = decodeMetadata(encodeMetadata(p.meta as never));
@@ -178,7 +260,7 @@ export class FrameServer {
         // ignore
       }
     }
-    return formatCommentBody({ text, meta, ...(previewUrl ? { previewUrl } : {}) });
+    return { text, meta, ...(previewUrl ? { previewUrl } : {}) };
   }
 
   async #redeem(p: Record<string, unknown>): Promise<{ viewer: Viewer }> {
@@ -295,4 +377,9 @@ function toRpcError(err: unknown): RpcError {
     return new RpcError(map[err.code], err.message);
   }
   return new RpcError('internal', 'Unexpected error');
+}
+
+/** Errors after which a plain PR comment is still worth trying. */
+function isFallbackable(err: unknown): boolean {
+  return err instanceof BackendError && (err.code === 'invalid' || err.code === 'not-found' || err.code === 'http');
 }

@@ -7,7 +7,9 @@ Reviewers click an element on a preview URL and leave a comment. The comment
 is posted to the pull request. GitHub is the only database. The only server
 piece is a small, stateless auth worker.
 
-**Status:** M3 (robust anchoring). Pins are matched by confidence scoring
+**Status:** M4 (source-line comments). With the Vite source plugin, a pin on
+a component the PR changes becomes a review comment on that file and line
+([fallback rules](docs/source-line-comments.md)). M3: Pins are matched by confidence scoring
 across all stored selectors and survive class renames, reordering, wrappers
 and text tweaks; when an element is really gone the pin goes outdated
 ([ADR 9](docs/adr/0009-anchor-scoring.md)). Since M2: Reviewers sign in with GitHub, pin

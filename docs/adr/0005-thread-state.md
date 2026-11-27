@@ -35,6 +35,12 @@ Option 3: state-event replies.
 - Review-comment threads (M4) use GraphQL `isResolved` when a token is
   available and fall back to state events when it isn't.
 
+## Update (M4, ADR 10)
+
+Implemented as planned. When signed in, the frame reads `reviewThreads.isResolved`
+via GraphQL and it wins for review threads. Resolving from the widget posts
+the state event and also resolves the GitHub thread, best-effort.
+
 ## Consequences
 
 - No extra requests: state comes from the same comment list we already

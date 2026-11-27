@@ -226,3 +226,41 @@ describe('local comments vs. stale reads', () => {
     expect(el.threads[0]!.replies.map((r) => r.text)).toEqual([expect.stringContaining('Mine')]);
   });
 });
+
+describe('review threads (M4)', () => {
+  beforeEach(() => {
+    document.body.innerHTML = PAGE;
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockReturnValue(new DOMRect(100, 200, 120, 40));
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    setAuthFrameFactory(null);
+  });
+
+  it('tells the frame a reply belongs to a review thread', async () => {
+    const el = await mount({ comments: [rawPin(1, 'On the diff', { url: '/', anchor: { testId: 'checkout' } }, { login: 'alice', kind: 'review' })] });
+    sr(el).querySelector<HTMLButtonElement>('.pin')!.click();
+    const dialog = sr(el).querySelector<HTMLDialogElement>('dialog.thread:not(.composer-dialog)')!;
+    dialog.querySelector('textarea')!.value = 'Done';
+    dialog.querySelector('textarea')!.dispatchEvent(new Event('input'));
+    dialog.querySelector('form')!.requestSubmit();
+    await flush();
+    const reply = frame.calls.find((c) => c.method === 'createComment')!.params as RpcMethods['createComment'][0];
+    expect(reply.parentKind).toBe('review');
+  });
+
+  it('sends the source location of the picked element', async () => {
+    document.body.innerHTML = '<main><button data-pp-src="examples/app/src/App.tsx:30:9">Place order</button></main>';
+    const el = await mount();
+    el.commentMode = true;
+    document.querySelector('button')!.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
+    const dialog = sr(el).querySelector<HTMLDialogElement>('dialog.composer-dialog')!;
+    dialog.querySelector('textarea')!.value = 'x';
+    dialog.querySelector('textarea')!.dispatchEvent(new Event('input'));
+    dialog.querySelector('form')!.requestSubmit();
+    await flush();
+    const create = frame.calls.find((c) => c.method === 'createComment')!.params as RpcMethods['createComment'][0];
+    expect(create.meta.anchor.source).toBe('examples/app/src/App.tsx:30:9');
+    expect(create.parentKind).toBeUndefined();
+  });
+});
